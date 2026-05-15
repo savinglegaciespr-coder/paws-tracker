@@ -608,9 +608,9 @@
 
 
     <div class="action-bar">
-      <button class="btn btn-export" onclick="openExportModal()">📄 Exportar PDF</button>
-      <button class="btn btn-export" onclick="openExportModal()">📊 Exportar CSV</button>
-      <button class="btn btn-warn" onclick="clearCompleted()">🧹 Limpiar completados</button>
+      <button class="btn btn-export" data-perm="export" onclick="openExportModal()">📄 Exportar PDF</button>
+      <button class="btn btn-export" data-perm="export" onclick="openExportModal()">📊 Exportar CSV</button>
+      <button class="btn btn-warn" data-perm="delete" onclick="clearCompleted()">🧹 Limpiar completados</button>
     </div>
 
     <div class="add-bar">
@@ -803,7 +803,8 @@ function renderStudents(){
   const students=window.getStudents()||[];
   const tbody=document.getElementById('studentTable');
   const empty=document.getElementById('emptyMsg');
-  document.getElementById('totalCount').textContent=students.length+' PERRO'+(students.length!==1?'S':'');
+  if(!tbody) return;
+  if(document.getElementById('totalCount')) document.getElementById('totalCount').textContent=students.length+' PERRO'+(students.length!==1?'S':'');
   const a=students.filter(s=>s.status==='activo').length;
   const sh=students.filter(s=>s.status==='salida_hoy').length;
   const done=students.filter(s=>s.status==='completado').length;
@@ -852,6 +853,7 @@ function renderStudents(){
   </tr>`;}).join('');
   updateDogSelects();
 }
+window.renderStudents = renderStudents; // assign immediately after definition
 
 // ── CALCULATE EXIT DATE (6-day weeks, skip Sundays) ──────────
 function calcExitDate(intakeId, weeksId, dateId){
@@ -969,6 +971,7 @@ function renderLogs(){
     </div>`;
   }).join('');
 }
+window.renderLogs = renderLogs; // assign immediately after definition
 
 // ── BULK ACTIONS ──────────────────────────────────
 function closeModal2(id){ document.getElementById(id).classList.remove('open'); }
