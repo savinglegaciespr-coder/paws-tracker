@@ -877,7 +877,7 @@ async function addStudent(){
 }
 
 function deleteStudent(id){ students=students.filter(s=>s.id!==id); save();renderStudents(); }
-function openEdit(id){ const s=students.find(x=>x.id===id);if(!s)return; editingId=id; document.getElementById('editName').value=s.name; document.getElementById('editIntake').value=s.intake||''; document.getElementById('editWeeks').value=''; document.getElementById('editDate').value=s.date||''; document.getElementById('editTime').value=s.time||''; document.getElementById('editStatus').value=s.status; document.getElementById('editModal').classList.add('open'); }
+function openEdit(id){ const students=window.getStudents()||[]; const s=students.find(x=>x.id===id);if(!s)return; editingId=id; document.getElementById('editName').value=s.name; document.getElementById('editIntake').value=s.intake||''; document.getElementById('editWeeks').value=''; document.getElementById('editDate').value=s.date||''; document.getElementById('editTime').value=s.time||''; document.getElementById('editStatus').value=s.status; document.getElementById('editModal').classList.add('open'); }
 function closeModal(){ editingId=null; document.getElementById('editModal').classList.remove('open'); }
 function bgClose(e){ if(e.target.id==='editModal')closeModal(); }
 async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value}); closeModal(); flash('Cambios guardados.'); }
@@ -1079,6 +1079,7 @@ function getExportRange(){
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const start = new Date(y, m, 1);
   const end   = new Date(y, m+1, 0);
+  const students=window.getStudents()||[]; const logs=window.getLogs()||[];
   // Filter students active during the month
   const filtStudents = students.filter(s => {
     const si = s.intake ? new Date(s.intake+'T12:00:00') : null;
@@ -1235,6 +1236,7 @@ function runExportPDF(){
 // ── DOG REPORT ─────────────────────────────────────
 let _reportDogId = null;
 function openDogReport(id){
+  const students=window.getStudents()||[]; const logs=window.getLogs()||[];
   const s = students.find(x=>x.id===id); if(!s) return;
   _reportDogId = id;
   const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -1281,6 +1283,7 @@ function openDogReport(id){
 
 function exportDogReport(){
   if(!_reportDogId) return;
+  const students=window.getStudents()||[]; const logs=window.getLogs()||[];
   const s = students.find(x=>x.id===_reportDogId); if(!s) return;
   const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
   const actLabel = {caminata:'Caminata estructurada',piso:'Entrenamiento de piso'};
