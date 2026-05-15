@@ -80,11 +80,18 @@
         }
       } else {
         const data = userData.data();
-        if (!data.active || data.role === 'pending') {
+        if (data.role === 'superadmin') {
+          // Superadmin always has access
+          currentRole = 'superadmin';
+        } else if (!data.active || data.role === 'pending') {
           showPending();
           return;
+        } else {
+          currentRole = data.role;
+          if (data.role === 'superadmin' && !data.active) {
+            await updateDoc(doc(db, 'users', user.uid), { active: true });
+          }
         }
-        currentRole = data.role;
       }
 
       perms = PERMISSIONS[currentRole] || {};
@@ -410,6 +417,19 @@
     width: 100%;
     box-sizing: border-box;
   }
+  .toggle-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+  .toggle-track {
+    width:36px; height:20px; border-radius:20px;
+    background:var(--border); position:relative;
+    transition:background .2s;
+  }
+  .toggle-track.on { background:var(--green); }
+  .toggle-thumb {
+    width:14px; height:14px; border-radius:50%;
+    background:#fff; position:absolute;
+    top:3px; left:3px; transition:left .2s;
+  }
+  .toggle-track.on .toggle-thumb { left:19px; }
   .empty { text-align: center; padding: 44px 20px; color: var(--muted); }
   .empty .empty-icon { font-size: 36px; margin-bottom: 10px; }
   .empty p { font-size: 14px; }
@@ -816,6 +836,24 @@ function renderStudents(){
     </div></td>
   </tr>`;}).join('');
   updateDogSelects();
+}
+
+// ── CALCULATE EXIT DATE (6-day weeks, skip Sundays) ──────────
+function calcExitDate(intakeId, weeksId, dateId){
+  const intakeVal = document.getElementById(intakeId).value;
+  const weeksVal  = parseInt(document.getElementById(weeksId).value);
+  if(!intakeVal || !weeksVal || weeksVal < 1) return;
+  let days = weeksVal * 6;
+  let date = new Date(intakeVal + 'T12:00:00');
+  let added = 0;
+  while(added < days){
+    date.setDate(date.getDate() + 1);
+    if(date.getDay() !== 0){ added++; }
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  document.getElementById(dateId).value = y+'-'+m+'-'+d;
 }
 
 async function addStudent(){
@@ -1330,9 +1368,11 @@ async function loadUsers(){
       <select onchange="updateUserRole('${u.id}',this.value,${u.active})" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:12px;">
         ${roles.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${roleLabels[r]}</option>`).join('')}
       </select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;">
-        <input type="checkbox" ${u.active?'checked':''} onchange="updateUserRole('${u.id}','${u.role}',this.checked)" style="accent-color:var(--green);"/>
-        Activo
+      <label class="toggle-wrap" onclick="updateUserRole('${u.id}','${u.role}',${!u.active})">
+        <div class="toggle-track ${u.active?'on':''}">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span style="font-size:12px;color:${u.active?'var(--green2)':'var(--muted)'};">${u.active?'Activo':'Inactivo'}</span>
       </label>
     </div>`).join('') : '<p style="color:var(--muted);font-size:13px;">No hay usuarios registrados.</p>';
 }
