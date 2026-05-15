@@ -113,8 +113,11 @@
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const tryRender = () => {
-        if (window.renderStudents) { window.renderStudents(); }
-        else { setTimeout(tryRender, 100); }
+        if (window.renderStudents && document.getElementById('studentTable')) { 
+          window.renderStudents(); 
+        } else { 
+          setTimeout(tryRender, 200); 
+        }
       };
       tryRender();
     });
@@ -200,8 +203,14 @@
     }
     // Hide bitacora tab for operators
     if (!perms.logs) {
-      document.querySelector('[data-tab="bitacora"]').style.display = 'none';
+      const bitTab = document.querySelector('[data-tab="bitacora"]');
+      if(bitTab) bitTab.style.display = 'none';
     }
+    // Force render after app is shown
+    setTimeout(() => {
+      if (window.renderStudents) window.renderStudents();
+      if (window.renderLogs) window.renderLogs();
+    }, 300);
   }
 
   // ── EXPOSE TO GLOBAL SCOPE ─────────────────────────
