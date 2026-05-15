@@ -112,12 +112,20 @@
 
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (window.renderStudents) window.renderStudents();
+      const tryRender = () => {
+        if (window.renderStudents) { window.renderStudents(); }
+        else { setTimeout(tryRender, 100); }
+      };
+      tryRender();
     });
 
     unsubLogs = onSnapshot(query(collection(db, 'logs'), orderBy('createdAt', 'desc')), (snap) => {
       logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (window.renderLogs) window.renderLogs();
+      const tryRenderLogs = () => {
+        if (window.renderLogs) { window.renderLogs(); }
+        else { setTimeout(tryRenderLogs, 100); }
+      };
+      tryRenderLogs();
     });
   }
 
@@ -785,10 +793,10 @@ function fmtTime(t){ if(!t)return'—'; const[h,m]=t.split(':').map(Number); ret
 function fmtDate(d){ if(!d)return'<span style="color:var(--muted)">—</span>'; return new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'}); }
 
 function renderStudents(){
+  const students=window.getStudents()||[];
   const tbody=document.getElementById('studentTable');
   const empty=document.getElementById('emptyMsg');
   document.getElementById('totalCount').textContent=students.length+' PERRO'+(students.length!==1?'S':'');
-  const students=window.getStudents()||[];
   const a=students.filter(s=>s.status==='activo').length;
   const sh=students.filter(s=>s.status==='salida_hoy').length;
   const done=students.filter(s=>s.status==='completado').length;
