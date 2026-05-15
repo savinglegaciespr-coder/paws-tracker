@@ -191,6 +191,13 @@
     // Update user info in header
     document.getElementById('userNameDisplay').textContent = currentUser.displayName || currentUser.email;
     document.getElementById('userRoleDisplay').textContent = currentRole.toUpperCase();
+    // Set user photo
+    const avatarEl = document.getElementById('userAvatarDisplay');
+    if (currentUser.photoURL) {
+      avatarEl.innerHTML = `<img src="${currentUser.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" referrerpolicy="no-referrer"/>`;
+    } else {
+      avatarEl.textContent = (currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
+    }
     // Hide bitacora tab for operators
     if (!perms.logs) {
       document.querySelector('[data-tab="bitacora"]').style.display = 'none';
@@ -867,7 +874,13 @@ function calcExitDate(intakeId, weeksId, dateId){
 async function addStudent(){
   const name=document.getElementById('newName').value.trim();
   if(!name){flash('Ingresa el nombre del perro.');return;}
-  await window.FB.addStudent({name,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo'});
+  try {
+    await window.FB.addStudent({name,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo'});
+  } catch(err) {
+    flash('Error: ' + err.message);
+    console.error(err);
+    return;
+  }
   document.getElementById('newName').value='';
   document.getElementById('newIntake').value='';
   document.getElementById('newWeeks').value='';
@@ -898,12 +911,19 @@ async function addLog(){
   const notes=document.getElementById('logNotes').value.trim();
   const caminata=document.getElementById('chkCaminata').checked;
   const piso=document.getElementById('chkPiso').checked;
-  if(!dog||!date){flash('Selecciona el perro y la fecha.');return;}
+  if(!dog){flash('Selecciona el perro.');return;}
+  if(!date){flash('Selecciona la fecha.');return;}
   if(!caminata&&!piso){flash('Selecciona al menos una actividad.');return;}
   const types=[];
   if(caminata)types.push('caminata');
   if(piso)types.push('piso');
-  await window.FB.addLog({dog,date,types,notes});
+  try {
+    await window.FB.addLog({dog,date,types,notes});
+  } catch(err) {
+    flash('Error al guardar: ' + err.message);
+    console.error(err);
+    return;
+  }
   document.getElementById('logDog').value='';
   document.getElementById('logDate').value='';
   document.getElementById('logNotes').value='';
