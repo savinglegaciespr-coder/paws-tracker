@@ -805,7 +805,7 @@ function renderStudents(){
     <div class="stat-card"><div class="stat-label">Activos</div><div class="stat-value green">${a}</div></div>
     <div class="stat-card"><div class="stat-label">Salen hoy</div><div class="stat-value yellow">${sh}</div></div>
     <div class="stat-card"><div class="stat-label">Completados</div><div class="stat-value">${done}</div></div>
-    <div class="stat-card"><div class="stat-label">Actividades</div><div class="stat-value green">${logs.length}</div></div>`;
+    <div class="stat-card"><div class="stat-label">Actividades</div><div class="stat-value green">${(window.getLogs()||[]).length}</div></div>`;
   if(!students.length){ tbody.innerHTML=''; empty.style.display='block'; updateDogSelects(); return; }
   empty.style.display='none';
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
