@@ -722,7 +722,7 @@
       <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Jue</div>
       <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Vie</div>
       <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Sáb</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;padding:6px;">Dom</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Dom</div>
     </div>
 
     <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
@@ -1479,16 +1479,16 @@ function renderCalendar(){
 
     const hasEvents = ev.in.length || ev.out.length;
     const cursor = hasEvents ? 'pointer' : 'default';
-    const bg = isToday ? 'var(--surface2)' : 'var(--surface)';
+    const bg = isToday ? 'var(--surface2)' : isSun ? '#1a1a1a' : 'var(--surface)';
     const border = isToday ? '1px solid var(--green)' : '1px solid var(--border)';
-    const dayCol = isSun ? 'var(--red)' : 'var(--text)';
+    const dayCol = isSun ? 'var(--muted)' : 'var(--text)';
 
     let dotsHtml = '';
     if(ev.in.length)  dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin:0 1px;"></span>`;
     if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
     else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
 
-    let namesHtml = '';
+    let namesHtml = isSun ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
       const allNames = [...new Set([...ev.in,...ev.out])];
       namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${n}</div>`).join('');
