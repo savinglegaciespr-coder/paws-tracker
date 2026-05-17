@@ -606,6 +606,7 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
   <div class="tab" onclick="switchTab(this,'bitacora')">📋 Bitácora</div>
+  <div class="tab" onclick="switchTab(this,'calendario')">📅 Calendario</div>
 </div>
 
 <main>
@@ -639,6 +640,10 @@
         <div class="field fld-eq"><label>Hora de salida</label><input type="time" id="newTime"/></div>
         <div style="display:flex;align-items:flex-end;">
           <button class="btn btn-primary" style="width:100%;padding:11px;" onclick="addStudent()">+ Agregar</button>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Observaciones <span style="color:var(--muted);font-size:9px;font-weight:400;">alergias, temperamento, notas especiales</span></label>
+          <textarea id="newObs" rows="2" placeholder="Ej: Alérgico al pollo, ansioso con otros perros..."></textarea>
         </div>
       </div>
     </div>
@@ -693,6 +698,43 @@
     <div class="log-grid" id="logList"></div>
     <div class="empty" id="emptyLog" style="display:none;"><div class="empty-icon">📋</div><p>No hay actividades registradas.</p></div>
   </div>
+
+  <!-- CALENDARIO -->
+  <div class="panel" id="panel-calendario">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;padding:6px 14px;" onclick="calPrevMonth()">‹</button>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--green);" id="calTitle">—</div>
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;padding:6px 14px;" onclick="calNextMonth()">›</button>
+      </div>
+      <div style="display:flex;gap:12px;font-size:11px;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--green);border-radius:50%;display:inline-block;"></span> Ingreso</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--yellow);border-radius:50%;display:inline-block;"></span> Salida</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--red);border-radius:50%;display:inline-block;"></span> 3+ salidas</span>
+      </div>
+    </div>
+
+    <!-- Day headers -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Lun</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mar</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mié</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Jue</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Vie</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Sáb</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;padding:6px;">Dom</div>
+    </div>
+
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
+
+    <!-- Day detail popup -->
+    <div id="calDetail" style="display:none;margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);margin-bottom:12px;" id="calDetailTitle"></div>
+      <div id="calDetailContent"></div>
+    </div>
+  </div>
+
+</div>
 
 </main>
 
@@ -793,6 +835,10 @@
         </select>
       </div>
     </div>
+    <div class="field" style="margin-top:12px;grid-column:1/-1;">
+      <label>Observaciones <span style="color:var(--muted);font-size:9px;font-weight:400;">alergias, temperamento, notas especiales</span></label>
+      <textarea id="editObs" rows="3" placeholder="Ej: Alérgico al pollo, ansioso con otros perros, requiere correa doble..."></textarea>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-sm btn-ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="saveEdit()">Guardar cambios</button>
@@ -862,7 +908,10 @@ function renderStudents(){
     const rowStyle = s.date===todayStr ? 'background:#f5c84211;' : s.date===tomorrowStr ? 'background:#5b9cf611;' : '';
     return `<tr style="${rowStyle}">
     <td style="color:var(--muted);font-size:12px;">${i+1}</td>
-    <td><strong>${s.name}</strong>${alertBadge}</td>
+    <td>
+      <strong>${s.name}</strong>${alertBadge}
+      ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${s.obs.length>60?s.obs.slice(0,60)+'...':s.obs}</div>` : ''}
+    </td>
     <td>${fmtDate(s.intake)}</td>
     <td>${daysBadge}</td>
     <td>${fmtDate(s.date)}</td>
@@ -900,7 +949,7 @@ async function addStudent(){
   const name=document.getElementById('newName').value.trim();
   if(!name){flash('Ingresa el nombre del perro.');return;}
   try {
-    await window.FB.addStudent({name,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo'});
+    await window.FB.addStudent({name,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo',obs:document.getElementById('newObs').value.trim()});
   } catch(err) {
     flash('Error: ' + err.message);
     console.error(err);
@@ -911,11 +960,12 @@ async function addStudent(){
   document.getElementById('newWeeks').value='';
   document.getElementById('newDate').value='';
   document.getElementById('newTime').value='';
+  document.getElementById('newObs').value='';
   flash('Estudiante agregado.');
 }
 
 function deleteStudent(id){ students=students.filter(s=>s.id!==id); save();renderStudents(); }
-function openEdit(id){ const students=window.getStudents()||[]; const s=students.find(x=>x.id===id);if(!s)return; editingId=id; document.getElementById('editName').value=s.name; document.getElementById('editIntake').value=s.intake||''; document.getElementById('editWeeks').value=''; document.getElementById('editDate').value=s.date||''; document.getElementById('editTime').value=s.time||''; document.getElementById('editStatus').value=s.status; document.getElementById('editModal').classList.add('open'); }
+function openEdit(id){ const students=window.getStudents()||[]; const s=students.find(x=>x.id===id);if(!s)return; editingId=id; document.getElementById('editName').value=s.name; document.getElementById('editIntake').value=s.intake||''; document.getElementById('editWeeks').value=''; document.getElementById('editDate').value=s.date||''; document.getElementById('editTime').value=s.time||''; document.getElementById('editStatus').value=s.status; document.getElementById('editObs').value=s.obs||''; document.getElementById('editModal').classList.add('open'); }
 function closeModal(){ editingId=null; document.getElementById('editModal').classList.remove('open'); }
 function bgClose(e){ if(e.target.id==='editModal')closeModal(); }
 async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value}); closeModal(); flash('Cambios guardados.'); }
@@ -1321,6 +1371,10 @@ function openDogReport(id){
         <div style="font-size:26px;font-weight:800;color:var(--yellow);">${pisos}</div>
       </div>
     </div>
+    ${s.obs ? `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:4px;">📋 Observaciones</div>
+      <div style="font-size:13px;color:var(--text);">${s.obs}</div>
+    </div>` : ''}
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Historial de actividades</div>
     ${logRows}`;
 
@@ -1373,11 +1427,120 @@ function exportDogReport(){
   flash('Reporte de '+s.name+' descargado.');
 }
 
+// ── CALENDAR ────────────────────────────────────────
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendar(){
+  const students = window.getStudents() || [];
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('calTitle').textContent = monthNames[calMonth] + ' ' + calYear;
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth+1, 0);
+  const startDow = (firstDay.getDay()+6)%7; // Monday=0
+  const today    = new Date().toISOString().slice(0,10);
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  // Build map of events per day
+  const events = {};
+  students.forEach(s => {
+    if(s.intake && s.intake.startsWith(calYear+'-'+String(calMonth+1).padStart(2,'0'))){
+      const d = s.intake.slice(8,10);
+      if(!events[d]) events[d] = {in:[],out:[]};
+      events[d].in.push(s.name);
+    }
+    if(s.date && s.date.startsWith(calYear+'-'+String(calMonth+1).padStart(2,'0'))){
+      const d = s.date.slice(8,10);
+      if(!events[d]) events[d] = {in:[],out:[]};
+      events[d].out.push(s.name);
+    }
+  });
+
+  // Empty cells before first day
+  for(let i=0;i<startDow;i++){
+    grid.innerHTML += '<div style="min-height:80px;"></div>';
+  }
+
+  // Day cells
+  for(let d=1;d<=lastDay.getDate();d++){
+    const ds = String(d).padStart(2,'0');
+    const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+ds;
+    const ev = events[ds] || {in:[],out:[]};
+    const isToday = dateStr === today;
+    const isSun = (new Date(calYear,calMonth,d).getDay()===0);
+
+    let dotColor = '';
+    if(ev.out.length >= 3) dotColor = 'var(--red)';
+    else if(ev.in.length)  dotColor = 'var(--green)';
+    else if(ev.out.length) dotColor = 'var(--yellow)';
+
+    const hasEvents = ev.in.length || ev.out.length;
+    const cursor = hasEvents ? 'pointer' : 'default';
+    const bg = isToday ? 'var(--surface2)' : 'var(--surface)';
+    const border = isToday ? '1px solid var(--green)' : '1px solid var(--border)';
+    const dayCol = isSun ? 'var(--red)' : 'var(--text)';
+
+    let dotsHtml = '';
+    if(ev.in.length)  dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin:0 1px;"></span>`;
+    if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
+    else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
+
+    let namesHtml = '';
+    if(hasEvents){
+      const allNames = [...new Set([...ev.in,...ev.out])];
+      namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${n}</div>`).join('');
+      if(allNames.length>2) namesHtml += `<div style="font-size:9px;color:var(--muted);">+${allNames.length-2} más</div>`;
+    }
+
+    grid.innerHTML += `<div onclick="showCalDay('${ds}')" style="min-height:80px;background:${bg};border:${border};border-radius:8px;padding:6px;cursor:${cursor};transition:border-color .15s;" onmouseover="if(${hasEvents})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${isToday?'var(--green)':'var(--border)'}'">
+      <div style="font-weight:700;font-size:13px;color:${dayCol};">${d}</div>
+      <div style="margin-top:4px;">${dotsHtml}</div>
+      ${namesHtml}
+    </div>`;
+  }
+}
+
+function showCalDay(ds){
+  const students = window.getStudents() || [];
+  const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+ds;
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  
+  const ins  = students.filter(s=>s.intake===dateStr);
+  const outs = students.filter(s=>s.date===dateStr);
+  
+  if(!ins.length && !outs.length){ document.getElementById('calDetail').style.display='none'; return; }
+
+  const d = new Date(calYear,calMonth,parseInt(ds));
+  document.getElementById('calDetailTitle').textContent = d.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  
+  let html2 = '';
+  if(ins.length){
+    html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
+    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${s.name}${s.obs?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">📋 '+s.obs.slice(0,40)+'</span>':''}</div>`).join('');
+  }
+  if(outs.length){
+    if(ins.length) html2 += '<div style="height:12px;"></div>';
+    html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:8px;">🟡 Salen</div>';
+    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${s.name}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+s.time+'</span>':''}</div>`).join('');
+  }
+  
+  document.getElementById('calDetailContent').innerHTML = html2;
+  document.getElementById('calDetail').style.display = 'block';
+}
+
+function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
+function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
+window.renderCalendar = renderCalendar;
+
 function switchTab(el,name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   el.classList.add('active');
+  if(name==='calendario') renderCalendar();
 }
 
 function flash(msg){
