@@ -882,7 +882,24 @@ function renderStudents(){
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
   const todayStr = new Date().toISOString().slice(0,10);
   const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
-  tbody.innerHTML=students.map((s,i)=>{
+  // Sort students: by exit date ascending, then by exit time, completados at bottom, no-date at end
+  const sorted = [...students].sort((a, b) => {
+    const isComp = s => s.status === 'completado';
+    if (isComp(a) && !isComp(b)) return 1;
+    if (!isComp(a) && isComp(b)) return -1;
+    if (isComp(a) && isComp(b)) return 0;
+    // Both not completed — sort by exit date
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    // Same date — sort by exit time
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    return a.time < b.time ? -1 : 1;
+  });
+  tbody.innerHTML=sorted.map((s,i)=>{
     // Days counter — color based on proximity to exit date
     let daysBadge = '<span style="color:var(--muted)">—</span>';
     if(s.intake){
