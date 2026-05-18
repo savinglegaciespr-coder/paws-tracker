@@ -990,7 +990,7 @@ function deleteStudent(id){ students=students.filter(s=>s.id!==id); save();rende
 function openEdit(id){ const students=window.getStudents()||[]; const s=students.find(x=>x.id===id);if(!s)return; editingId=id; document.getElementById('editName').value=s.name; document.getElementById('editIntake').value=s.intake||''; document.getElementById('editWeeks').value=''; document.getElementById('editDate').value=s.date||''; document.getElementById('editTime').value=s.time||''; document.getElementById('editStatus').value=s.status; document.getElementById('editObs').value=s.obs||''; document.getElementById('editModal').classList.add('open'); }
 function closeModal(){ editingId=null; document.getElementById('editModal').classList.remove('open'); }
 function bgClose(e){ if(e.target.id==='editModal')closeModal(); }
-async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value}); closeModal(); flash('Cambios guardados.'); }
+async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value,obs:document.getElementById('editObs').value.trim()}); closeModal(); flash('Cambios guardados.'); }
 
 function updateDogSelects(){
   const students=window.getStudents()||[];
