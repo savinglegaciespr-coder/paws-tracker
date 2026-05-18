@@ -1199,12 +1199,25 @@ function getExportRange(){
   const end   = new Date(y, m+1, 0);
   const students=window.getStudents()||[]; const logs=window.getLogs()||[];
   // Filter students active during the month
-  const filtStudents = students.filter(s => {
+  const sortStudents = arr => [...arr].sort((a,b) => {
+    const isComp = s => s.status === 'completado';
+    if(isComp(a) && !isComp(b)) return 1;
+    if(!isComp(a) && isComp(b)) return -1;
+    if(!a.date && !b.date) return 0;
+    if(!a.date) return 1;
+    if(!b.date) return -1;
+    if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if(!a.time && !b.time) return 0;
+    if(!a.time) return 1;
+    if(!b.time) return -1;
+    return a.time < b.time ? -1 : 1;
+  });
+  const filtStudents = sortStudents(students.filter(s => {
     const si = s.intake ? new Date(s.intake+'T12:00:00') : null;
     const sd = s.date   ? new Date(s.date+'T12:00:00')   : null;
     if(!si) return false;
     return si <= end && (!sd || sd >= start);
-  });
+  }));
   // Filter logs during the month
   const filtLogs = logs.filter(l => {
     if(!l.date) return false;
@@ -1302,13 +1315,13 @@ function runExportPDF(){
   y0 += 4;
   doc.autoTable({
     startY: y0,
-    head: [['Nombre','Ingreso','Días','Salida','Hora','Estado']],
-    body: filtStudents.map(s=>[s.name, fmtD(s.intake), daysIn(s), fmtD(s.date), fmtT(s.time), statusLabel[s.status]||s.status]),
+    head: [['Nombre','Ingreso','Días','Salida','Hora','Estado','Observaciones']],
+    body: filtStudents.map(s=>[s.name, fmtD(s.intake), daysIn(s), fmtD(s.date), fmtT(s.time), statusLabel[s.status]||s.status, s.obs||'']),
     theme: 'grid',
     headStyles: { fillColor: dark, textColor: white, fontSize:8, fontStyle:'bold' },
     bodyStyles: { fontSize:8, textColor: dark },
     alternateRowStyles: { fillColor: [249,249,249] },
-    columnStyles: { 2:{halign:'center'}, 4:{halign:'center'} },
+    columnStyles: { 0:{cellWidth:35}, 1:{cellWidth:22}, 2:{cellWidth:12,halign:'center'}, 3:{cellWidth:22}, 4:{cellWidth:18,halign:'center'}, 5:{cellWidth:20}, 6:{cellWidth:47} },
     margin: { left:12, right:12 },
   });
   y0 = doc.lastAutoTable.finalY + 10;
