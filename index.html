@@ -880,8 +880,12 @@ function renderStudents(){
   if(!students.length){ tbody.innerHTML=''; empty.style.display='block'; updateDogSelects(); return; }
   empty.style.display='none';
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
-  const todayStr = new Date().toISOString().slice(0,10);
-  const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+  // Use local date to avoid UTC timezone offset issues (PR is UTC-4)
+  const _now = new Date();
+  const _pad = n => String(n).padStart(2,'0');
+  const todayStr = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
+  const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
+  const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
   // Sort students: by exit date ascending, then by exit time, completados at bottom, no-date at end
   const sorted = [...students].sort((a, b) => {
     const isComp = s => s.status === 'completado';
