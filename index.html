@@ -217,11 +217,53 @@
     setTimeout(() => {
       if (window.renderStudents) window.renderStudents();
       if (window.renderLogs) window.renderLogs();
+      // Check pending intakes badge for admins
+      if (perms.users && window.FB) {
+        window.FB.getIntakes().then(intakes => {
+          const pending = intakes.filter(i => i.status === 'pendiente').length;
+          const badge = document.getElementById('intakeBadge');
+          const tab = document.getElementById('tabSolicitudes');
+          if (badge && pending > 0) { badge.textContent = pending; badge.style.display = 'inline'; }
+          if (tab) tab.style.display = '';
+        }).catch(()=>{});
+      }
     }, 300);
   }
 
   // ── EXPOSE TO GLOBAL SCOPE ─────────────────────────
-  window.FB = { addStudent, updateStudent, deleteStudent, addLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle };
+  // ── INTAKES ───────────────────────────────────────────────────
+  async function getIntakes() {
+    const snap = await getDocs(query(collection(db, 'intakes'), orderBy('createdAt', 'desc')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+  async function approveIntake(intakeId, intakeData) {
+    await addDoc(collection(db, 'students'), {
+      name: intakeData.dogName,
+      intake: intakeData.intakeDate || '',
+      date: '',
+      time: '',
+      status: 'pendiente',
+      obs: [
+        intakeData.allergies ? 'Alergias: ' + intakeData.allergies : '',
+        intakeData.temperament ? 'Temperamento: ' + intakeData.temperament : '',
+        intakeData.aggrDogs && intakeData.aggrDogs !== 'No' ? 'Agresivo con perros: ' + intakeData.aggrDogs + (intakeData.aggrDogsDetail ? ' — ' + intakeData.aggrDogsDetail : '') : '',
+        intakeData.aggrPeople && intakeData.aggrPeople !== 'No' ? 'Agresivo con personas: ' + intakeData.aggrPeople + (intakeData.aggrPeopleDetail ? ' — ' + intakeData.aggrPeopleDetail : '') : '',
+        intakeData.bitten === 'Sí' ? 'Ha mordido: ' + (intakeData.bittenDetail || 'Sí') : '',
+        intakeData.medications ? 'Medicamentos: ' + intakeData.medications : '',
+        intakeData.food ? 'Alimento: ' + intakeData.food + (intakeData.feedingSchedule ? ' — ' + intakeData.feedingSchedule : '') : '',
+      ].filter(Boolean).join(' | '),
+      ownerName: intakeData.ownerName || '',
+      ownerPhone: intakeData.phone1 || '',
+      ownerEmail: intakeData.email || '',
+      createdAt: serverTimestamp()
+    });
+    await updateDoc(doc(db, 'intakes', intakeId), { status: 'aprobado' });
+  }
+  async function rejectIntake(intakeId) {
+    await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
+  }
+
+  window.FB = { addStudent, updateStudent, deleteStudent, addLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake };
   window.getStudents = () => students;
   window.getLogs = () => logs;
   window.getCurrentUser = () => currentUser;
@@ -608,6 +650,7 @@
   <div class="tab active" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
   <div class="tab" onclick="switchTab(this,'bitacora')">📋 Bitácora</div>
   <div class="tab" onclick="switchTab(this,'calendario')">📅 Calendario</div>
+  <div class="tab" data-perm="users" onclick="switchTab(this,'solicitudes')" id="tabSolicitudes" style="display:none;">📥 Solicitudes <span id="intakeBadge" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:10px;padding:2px 7px;margin-left:4px;font-weight:800;"></span></div>
 </div>
 
 <main>
@@ -733,6 +776,20 @@
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);margin-bottom:12px;" id="calDetailTitle"></div>
       <div id="calDetailContent"></div>
     </div>
+  </div>
+
+</div>
+
+  <!-- SOLICITUDES -->
+  <div class="panel" id="panel-solicitudes">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="section-title" style="margin-bottom:4px;">📥 Solicitudes de Inscripción</div>
+        <div style="font-size:12px;color:var(--muted);">Formularios enviados por clientes pendientes de aprobación</div>
+      </div>
+      <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);" onclick="loadIntakes()">🔄 Actualizar</button>
+    </div>
+    <div id="intakesList"><p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">Cargando solicitudes...</p></div>
   </div>
 
 </div>
@@ -1575,12 +1632,122 @@ function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} rend
 function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 window.renderCalendar = renderCalendar;
 
+// ── INTAKES ─────────────────────────────────────────────
+async function loadIntakes() {
+  const list = document.getElementById('intakesList');
+  list.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">Cargando...</p>';
+  try {
+    const intakes = await window.FB.getIntakes();
+    const pending = intakes.filter(i => i.status === 'pendiente');
+    const others  = intakes.filter(i => i.status !== 'pendiente');
+
+    // Update badge
+    const badge = document.getElementById('intakeBadge');
+    if (badge) {
+      if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline'; }
+      else { badge.style.display = 'none'; }
+    }
+
+    if (intakes.length === 0) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">No hay solicitudes registradas.</p>';
+      return;
+    }
+
+    const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const statusColor = { pendiente:'var(--yellow)', aprobado:'var(--green)', rechazado:'var(--red)' };
+    const statusLabel = { pendiente:'Pendiente', aprobado:'Aprobado', rechazado:'Rechazado' };
+
+    const renderIntake = (intake) => {
+      const isPending = intake.status === 'pendiente';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:16px;font-weight:800;color:var(--text);">${intake.dogName} <span style="font-size:12px;color:var(--muted);font-weight:500;">— ${intake.breed||''}</span></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Dueño: <b style="color:var(--text);">${intake.ownerName}</b> &nbsp;·&nbsp; ${intake.phone1||''} &nbsp;·&nbsp; ${intake.email||''}</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;letter-spacing:1px;">${statusLabel[intake.status]||intake.status}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px;">
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
+            <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Semanas</div>
+            <div style="font-weight:700;">${intake.weeks||'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Temperamento</div>
+            <div style="font-weight:700;">${intake.temperament||'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo perros</div>
+            <div style="font-weight:700;color:${intake.aggrDogs==='No'?'var(--green)':'var(--red)'};">${intake.aggrDogs||'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo personas</div>
+            <div style="font-weight:700;color:${intake.aggrPeople==='No'?'var(--green)':'var(--red)'};">${intake.aggrPeople||'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ha mordido</div>
+            <div style="font-weight:700;color:${intake.bitten==='No'?'var(--green)':'var(--red)'};">${intake.bitten||'—'}</div>
+          </div>
+        </div>
+        ${intake.allergies||intake.medications||intake.food ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;">
+          ${intake.allergies?'<b>Alergias:</b> '+intake.allergies+'<br/>':''}
+          ${intake.medications?'<b>Medicamentos:</b> '+intake.medications+'<br/>':''}
+          ${intake.food?'<b>Alimento:</b> '+intake.food+' — '+intake.feedingSchedule:''}
+        </div>`:''}
+        ${intake.vetName ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic} &nbsp;|&nbsp;
+          <b>Emergencia:</b> ${intake.emergencyName} · ${intake.emergencyPhone}
+        </div>`:''}
+        ${isPending ? `<div style="display:flex;gap:10px;margin-top:4px;">
+          <button class="btn btn-sm btn-primary" style="flex:1;" onclick="confirmApprove('${intake.id}')">✅ Aprobar e importar</button>
+          <button class="btn btn-sm btn-danger" style="padding:6px 16px;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
+        </div>`:''}
+      </div>`;
+    };
+
+    list.innerHTML = (pending.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:10px;">⏳ Pendientes ('+pending.length+')</div>' + pending.map(renderIntake).join('') : '') +
+      (others.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin:16px 0 10px;">Procesadas</div>' + others.map(renderIntake).join('') : '');
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;padding:40px;">Error al cargar. Intenta de nuevo.</p>';
+  }
+}
+
+async function confirmApprove(id) {
+  const intakes = await window.FB.getIntakes();
+  const intake = intakes.find(i => i.id === id);
+  if (!intake) return;
+  if (!confirm('¿Aprobar e importar a "' + intake.dogName + '" como estudiante pendiente de confirmación?')) return;
+  try {
+    await window.FB.approveIntake(id, intake);
+    flash(intake.dogName + ' importado como estudiante. ✅');
+    loadIntakes();
+  } catch(e) {
+    console.error(e);
+    flash('Error al aprobar. Intenta de nuevo.');
+  }
+}
+
+async function confirmReject(id) {
+  if (!confirm('¿Rechazar esta solicitud? No se puede deshacer.')) return;
+  await window.FB.rejectIntake(id);
+  flash('Solicitud rechazada.');
+  loadIntakes();
+}
+
+window.loadIntakes = loadIntakes;
+
 function switchTab(el,name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   el.classList.add('active');
   if(name==='calendario') renderCalendar();
+  if(name==='solicitudes') loadIntakes();
 }
 
 function flash(msg){
