@@ -784,7 +784,7 @@
 </div>
 
   <!-- SOLICITUDES -->
-  <div class="panel" id="panel-solicitudes">
+  <div class="panel" id="panel-solicitudes" style="max-width:860px;margin:0 auto;width:100%;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title" style="margin-bottom:4px;">📥 Solicitudes de Inscripción</div>
@@ -1665,14 +1665,14 @@ async function loadIntakes() {
     const renderIntake = (intake) => {
       const isPending = intake.status === 'pendiente';
       return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:12px;padding:16px 18px;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           <div>
-            <div style="font-size:16px;font-weight:800;color:var(--text);">${intake.dogName} <span style="font-size:12px;color:var(--muted);font-weight:500;">— ${intake.breed||''}</span></div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Dueño: <b style="color:var(--text);">${intake.ownerName}</b> &nbsp;·&nbsp; ${intake.phone1||''} &nbsp;·&nbsp; ${intake.email||''}</div>
+            <div style="font-size:15px;font-weight:800;color:var(--text);word-break:break-word;">${intake.dogName} <span style="font-size:11px;color:var(--muted);font-weight:500;">— ${intake.breed||''}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all;">Dueño: <b style="color:var(--text);">${intake.ownerName}</b><br/>${intake.phone1||''} · ${intake.email||''}</div>
           </div>
           <span style="font-size:11px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;letter-spacing:1px;">${statusLabel[intake.status]||intake.status}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-bottom:12px;">
           <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
             <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
@@ -1707,21 +1707,26 @@ async function loadIntakes() {
           <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic} &nbsp;|&nbsp;
           <b>Emergencia:</b> ${intake.emergencyName} · ${intake.emergencyPhone}
         </div>`:''}
-        ${(intake.vaccineFileURL || intake.parasiteFileURL) ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        ${(intake.vaccineFileURL || intake.parasiteFileURL) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           ${intake.vaccineFileURL ? `<a href="${intake.vaccineFileURL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--green);text-decoration:none;font-weight:700;">💉 Ver vacunas</a>` : ''}
           ${intake.parasiteFileURL ? `<a href="${intake.parasiteFileURL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--green);text-decoration:none;font-weight:700;">🛡️ Ver preventivos</a>` : ''}
         </div>` : '<div style="font-size:11px;color:var(--red);margin-bottom:10px;">⚠️ Sin documentos adjuntos</div>'}
-        ${isPending ? `<div style="display:flex;gap:10px;margin-top:4px;">
+        ${isPending ? `<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
           <button class="btn btn-sm btn-primary" style="flex:1;" onclick="confirmApprove('${intake.id}')">✅ Aprobar e importar</button>
           <button class="btn btn-sm btn-danger" style="padding:6px 16px;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
         </div>` : intake.status === 'rechazado' ? `<div style="margin-top:4px;">
-          <button onclick="confirmDelete('${intake.id}')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 14px;font-size:11px;cursor:pointer;">🗑️ Eliminar solicitud</button>
+          <button data-id="${intake.id}" class="btn-delete-intake" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;">🗑️ Eliminar solicitud rechazada</button>
         </div>` : ''}
       </div>`;
     };
 
     list.innerHTML = (pending.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:10px;">⏳ Pendientes ('+pending.length+')</div>' + pending.map(renderIntake).join('') : '') +
       (others.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin:16px 0 10px;">Procesadas</div>' + others.map(renderIntake).join('') : '');
+
+    // Event delegation for delete buttons
+    list.querySelectorAll('.btn-delete-intake').forEach(btn => {
+      btn.addEventListener('click', () => confirmDelete(btn.dataset.id));
+    });
   } catch(e) {
     console.error(e);
     list.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;padding:40px;">Error al cargar. Intenta de nuevo.</p>';
