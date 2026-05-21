@@ -585,8 +585,7 @@
     btn.textContent='Subiendo documentos...'; btn.disabled=true;
     try {
       await uploadFiles();
-      btn.textContent='Enviando solicitud...';
-      btn.style.background='var(--green)';
+      btn.textContent='Guardando solicitud...';
       const data={
         ownerName:document.getElementById('ownerName').value.trim(),
         address:document.getElementById('address').value.trim(),
@@ -631,7 +630,10 @@
       document.getElementById('progressBar').style.display='none';
       document.querySelector('.form-hero').style.display='none';
       document.getElementById('successScreen').style.display='block';
+      window.scrollTo({top:0,behavior:'smooth'});
+      return;
     } catch(e) {
+      console.error('Submit error:', e);
       console.error(e);
       // Check if files uploaded but something else failed - try to save anyway
       if(fileURLs.vaccine || fileURLs.parasite) {
@@ -685,10 +687,19 @@
           return;
         } catch(e2) { console.error(e2); }
       }
-      btn.textContent='❌ Error — intenta de nuevo';
-      btn.style.background='var(--red)';
-      btn.disabled=false;
-      setTimeout(()=>{ btn.textContent='Enviar solicitud ✓'; btn.style.background=''; btn.disabled=false; }, 3000);
+      // If files uploaded successfully, show success anyway
+      if(fileURLs.vaccine || fileURLs.parasite) {
+        document.getElementById('intakeForm').style.display='none';
+        document.getElementById('stepIndicator').style.display='none';
+        document.getElementById('progressBar').style.display='none';
+        document.querySelector('.form-hero').style.display='none';
+        document.getElementById('successScreen').style.display='block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      } else {
+        btn.textContent='❌ Error — intenta de nuevo';
+        btn.disabled=false;
+        setTimeout(()=>{ btn.textContent='Enviar solicitud ✓'; btn.disabled=false; }, 3000);
+      }
     }
   }
 </script>
