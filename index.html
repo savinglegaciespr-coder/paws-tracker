@@ -262,8 +262,11 @@
   async function rejectIntake(intakeId) {
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
   }
+  async function deleteIntake(intakeId) {
+    await deleteDoc(doc(db, 'intakes', intakeId));
+  }
 
-  window.FB = { addStudent, updateStudent, deleteStudent, addLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake };
+  window.FB = { addStudent, updateStudent, deleteStudent, addLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake, deleteIntake };
   window.getStudents = () => students;
   window.getLogs = () => logs;
   window.getCurrentUser = () => currentUser;
@@ -1638,8 +1641,10 @@ async function loadIntakes() {
   list.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">Cargando...</p>';
   try {
     const intakes = await window.FB.getIntakes();
-    const pending = intakes.filter(i => i.status === 'pendiente');
-    const others  = intakes.filter(i => i.status !== 'pendiente');
+    const pending  = intakes.filter(i => i.status === 'pendiente');
+    const approved = intakes.filter(i => i.status === 'aprobado');
+    const rejected = intakes.filter(i => i.status === 'rechazado');
+    const others   = [...approved, ...rejected];
 
     // Update badge
     const badge = document.getElementById('intakeBadge');
@@ -1667,7 +1672,7 @@ async function loadIntakes() {
           </div>
           <span style="font-size:11px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;letter-spacing:1px;">${statusLabel[intake.status]||intake.status}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:12px;">
           <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;font-size:11px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
             <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
@@ -1709,7 +1714,9 @@ async function loadIntakes() {
         ${isPending ? `<div style="display:flex;gap:10px;margin-top:4px;">
           <button class="btn btn-sm btn-primary" style="flex:1;" onclick="confirmApprove('${intake.id}')">✅ Aprobar e importar</button>
           <button class="btn btn-sm btn-danger" style="padding:6px 16px;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
-        </div>`:''}
+        </div>` : intake.status === 'rechazado' ? `<div style="margin-top:4px;">
+          <button onclick="confirmDelete('${intake.id}')" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 14px;font-size:11px;cursor:pointer;">🗑️ Eliminar solicitud</button>
+        </div>` : ''}
       </div>`;
     };
 
@@ -1740,6 +1747,13 @@ async function confirmReject(id) {
   if (!confirm('¿Rechazar esta solicitud? No se puede deshacer.')) return;
   await window.FB.rejectIntake(id);
   flash('Solicitud rechazada.');
+  loadIntakes();
+}
+
+async function confirmDelete(id) {
+  if (!confirm('¿Eliminar esta solicitud permanentemente?')) return;
+  await window.FB.deleteIntake(id);
+  flash('Solicitud eliminada.');
   loadIntakes();
 }
 
