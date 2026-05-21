@@ -398,7 +398,11 @@
       task.on('state_changed',
         snap => onProgress(Math.round(snap.bytesTransferred/snap.totalBytes*100)),
         reject,
-        () => getDownloadURL(task.snapshot.ref).then(resolve).catch(reject)
+        () => {
+          getDownloadURL(task.snapshot.ref)
+            .then(resolve)
+            .catch(() => resolve('storage:/' + path));
+        }
       );
     });
   };
