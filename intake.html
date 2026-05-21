@@ -487,9 +487,16 @@
           document.getElementById(type+'ProgressFill').style.width=pct+'%';
           document.getElementById(type+'Status').textContent = pct===100 ? '✅ Subido correctamente' : `Subiendo... ${pct}%`;
         });
+        document.getElementById(type+'Status').textContent='✅ Subido correctamente';
       } catch(e) {
-        document.getElementById(type+'Status').textContent='❌ Error al subir. Intenta de nuevo.';
-        throw e;
+        // If file uploaded but URL fetch failed, continue anyway
+        if(document.getElementById(type+'ProgressFill').style.width === '100%') {
+          document.getElementById(type+'Status').textContent='✅ Subido correctamente';
+          fileURLs[type] = path; // store path as fallback
+        } else {
+          document.getElementById(type+'Status').textContent='❌ Error al subir. Intenta de nuevo.';
+          throw e;
+        }
       }
     }
   }
