@@ -1702,6 +1702,10 @@ async function loadIntakes() {
           <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic} &nbsp;|&nbsp;
           <b>Emergencia:</b> ${intake.emergencyName} · ${intake.emergencyPhone}
         </div>`:''}
+        ${(intake.vaccineFileURL || intake.parasiteFileURL) ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          ${intake.vaccineFileURL ? `<a href="${intake.vaccineFileURL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--green);text-decoration:none;font-weight:700;">💉 Ver vacunas</a>` : ''}
+          ${intake.parasiteFileURL ? `<a href="${intake.parasiteFileURL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--green);text-decoration:none;font-weight:700;">🛡️ Ver preventivos</a>` : ''}
+        </div>` : '<div style="font-size:11px;color:var(--red);margin-bottom:10px;">⚠️ Sin documentos adjuntos</div>'}
         ${isPending ? `<div style="display:flex;gap:10px;margin-top:4px;">
           <button class="btn btn-sm btn-primary" style="flex:1;" onclick="confirmApprove('${intake.id}')">✅ Aprobar e importar</button>
           <button class="btn btn-sm btn-danger" style="padding:6px 16px;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
