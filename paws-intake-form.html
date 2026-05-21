@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Paws Training — Formulario de Inscripción</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#1e1e1e;--surface:#272727;--surface2:#2f2f2f;--border:#3a3a3a;
+    --green:#6db33f;--green2:#85cc50;--green-dim:#6db33f22;
+    --white:#f0ede8;--muted:#888;--red:#e05c5c;--yellow:#f5c842;--text:#f0ede8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{background:var(--surface);border-bottom:3px solid var(--green);padding:16px 24px;display:flex;align-items:center;gap:16px;}
+  .brand-icon{width:52px;height:52px;border-radius:12px;overflow:hidden;border:2px solid var(--green);flex-shrink:0;}
+  .brand-icon img{width:100%;height:100%;object-fit:cover;}
+  .brand-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--white);}
+  .brand-title span{color:var(--green);}
+  .brand-sub{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  main{max-width:720px;margin:0 auto;padding:24px 16px 60px;}
+  .form-hero{text-align:center;padding:32px 20px 24px;}
+  .form-hero h1{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;color:var(--green);margin-bottom:8px;}
+  .form-hero p{font-size:13px;color:var(--muted);line-height:1.6;}
+  .progress-wrap{display:flex;gap:6px;margin-bottom:28px;}
+  .progress-step{flex:1;height:4px;border-radius:4px;background:var(--border);transition:background .3s;}
+  .progress-step.active{background:var(--green);}
+  .progress-step.done{background:var(--green2);}
+  .form-section{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--green);border-radius:14px;padding:22px 20px;margin-bottom:20px;display:none;}
+  .form-section.active{display:block;}
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--green);margin-bottom:4px;}
+  .section-sub{font-size:11px;color:var(--muted);margin-bottom:18px;letter-spacing:1px;text-transform:uppercase;}
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .field-grid.single{grid-template-columns:1fr;}
+  @media(max-width:540px){.field-grid{grid-template-columns:1fr;}}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);}
+  label .req{color:var(--red);margin-left:2px;}
+  input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:14px;font-weight:500;padding:10px 12px;width:100%;transition:border-color .2s;-webkit-appearance:none;appearance:none;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);}
+  textarea{resize:vertical;min-height:80px;}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+  .error-msg{font-size:11px;color:var(--red);display:none;margin-top:2px;}
+  .field.has-error .error-msg{display:block;}
+  .field.has-error input,.field.has-error select,.field.has-error textarea{border-color:var(--red);}
+  .radio-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .radio-opt{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;user-select:none;}
+  .radio-opt:has(input:checked){border-color:var(--green);background:var(--green-dim);color:var(--green2);}
+  .radio-opt input{display:none;}
+  .conditional-field{display:none;margin-top:10px;}
+  .conditional-field.visible{display:block;}
+
+  /* File upload */
+  .file-upload-area{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+  .file-upload-area:hover,.file-upload-area.dragover{border-color:var(--green);background:var(--green-dim);}
+  .file-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .file-upload-icon{font-size:28px;margin-bottom:6px;}
+  .file-upload-text{font-size:12px;color:var(--muted);}
+  .file-upload-text strong{color:var(--green);}
+  .file-preview{display:none;margin-top:10px;background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:12px;align-items:center;gap:10px;}
+  .file-preview.visible{display:flex;}
+  .file-preview-name{flex:1;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-preview-size{color:var(--muted);flex-shrink:0;}
+  .file-preview-remove{color:var(--red);cursor:pointer;font-size:16px;flex-shrink:0;}
+  .upload-progress{display:none;margin-top:8px;}
+  .upload-progress.visible{display:block;}
+  .progress-bar{height:4px;background:var(--border);border-radius:4px;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:var(--green);width:0%;transition:width .3s;}
+  .upload-status{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  .decl-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:border-color .2s;}
+  .decl-wrap:has(input:checked){border-color:var(--green);}
+  .decl-wrap input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--green);cursor:pointer;margin-top:2px;-webkit-appearance:checkbox;appearance:checkbox;}
+  .decl-text{font-size:12px;line-height:1.6;color:var(--muted);}
+  .decl-text strong{color:var(--text);}
+  .form-nav{display:flex;gap:12px;margin-top:22px;justify-content:flex-end;}
+  .btn{font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;padding:12px 24px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;letter-spacing:0.5px;}
+  .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--muted);}
+  .btn-ghost:hover{border-color:var(--green);color:var(--green);}
+  .btn-primary{background:var(--green);color:#fff;}
+  .btn-primary:hover{background:var(--green2);transform:translateY(-1px);}
+  .btn-primary:disabled{background:var(--muted);cursor:not-allowed;transform:none;}
+  .step-indicator{text-align:center;font-size:11px;color:var(--muted);margin-bottom:16px;letter-spacing:1px;text-transform:uppercase;}
+  #successScreen{display:none;text-align:center;padding:60px 20px;}
+  .success-icon{font-size:64px;margin-bottom:20px;}
+  .success-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--green);margin-bottom:12px;}
+  .success-msg{font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto;}
+  footer{text-align:center;font-size:11px;color:var(--muted);padding:20px;letter-spacing:1px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand-icon"><img src="data:image/jpeg;base64,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" alt="Paws Training"/></div>
+  <div>
+    <div class="brand-title">PAWS <span>TRAINING</span></div>
+    <div class="brand-sub">by Pet Lovers Sitting · Formulario de Inscripción</div>
+  </div>
+</header>
+
+<main>
+  <div class="form-hero">
+    <h1>Registro Oficial</h1>
+    <p>Completa el siguiente formulario para solicitar un espacio para tu mascota.<br/>Nos comunicaremos contigo en un máximo de 24 horas para confirmar disponibilidad.</p>
+  </div>
+  <div class="step-indicator" id="stepIndicator">Paso 1 de 6</div>
+  <div class="progress-wrap" id="progressBar">
+    <div class="progress-step active" id="ps1"></div>
+    <div class="progress-step" id="ps2"></div>
+    <div class="progress-step" id="ps3"></div>
+    <div class="progress-step" id="ps4"></div>
+    <div class="progress-step" id="ps5"></div>
+    <div class="progress-step" id="ps6"></div>
+  </div>
+
+  <form id="intakeForm" novalidate>
+
+    <!-- PASO 1: Contacto -->
+    <div class="form-section active" id="step1">
+      <div class="section-title">Información de Contacto</div>
+      <div class="section-sub">Datos del dueño de la mascota</div>
+      <div class="field-grid">
+        <div class="field full" id="f-ownerName"><label>Nombre completo<span class="req">*</span></label><input type="text" id="ownerName" placeholder="Nombre y apellido"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field full" id="f-address"><label>Dirección física<span class="req">*</span></label><input type="text" id="address" placeholder="Calle, Urbanización, Ciudad, PR"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-phone1"><label>Teléfono principal<span class="req">*</span></label><input type="tel" id="phone1" placeholder="787-000-0000"/><span class="error-msg">Ingresa un teléfono válido</span></div>
+        <div class="field"><label>Teléfono alterno</label><input type="tel" id="phone2" placeholder="787-000-0000"/></div>
+        <div class="field full" id="f-email"><label>Correo electrónico<span class="req">*</span></label><input type="email" id="email" placeholder="tu@email.com"/><span class="error-msg">Ingresa un correo válido</span></div>
+      </div>
+      <div class="form-nav"><button type="button" class="btn btn-primary" onclick="nextStep(1)">Continuar →</button></div>
+    </div>
+
+    <!-- PASO 2: Mascota -->
+    <div class="form-section" id="step2">
+      <div class="section-title">Información de la Mascota</div>
+      <div class="section-sub">Datos del perro</div>
+      <div class="field-grid">
+        <div class="field full" id="f-dogName"><label>Nombre del perro<span class="req">*</span></label><input type="text" id="dogName" placeholder="Ej: Max, Luna, Toby..."/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-breed"><label>Raza<span class="req">*</span></label><input type="text" id="breed" placeholder="Ej: Golden Retriever"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field"><label>Color</label><input type="text" id="color" placeholder="Ej: Dorado, Negro, Blanco"/></div>
+        <div class="field"><label>Fecha de nacimiento</label><input type="date" id="dob"/></div>
+        <div class="field"><label>Peso aproximado</label><input type="text" id="weight" placeholder="Ej: 25 lbs"/></div>
+        <div class="field" id="f-sex">
+          <label>Sexo<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="sex" value="Macho"/> Macho</label>
+            <label class="radio-opt"><input type="radio" name="sex" value="Hembra"/> Hembra</label>
+          </div>
+          <span class="error-msg" id="sex-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-neutered">
+          <label>¿Esterilizado / Castrado?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="neutered" value="Sí"/> Sí</label>
+            <label class="radio-opt"><input type="radio" name="neutered" value="No"/> No</label>
+          </div>
+          <span class="error-msg" id="neutered-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-vaccines">
+          <label>¿Vacunas al día?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="vaccines" value="Sí"/> Sí</label>
+            <label class="radio-opt"><input type="radio" name="vaccines" value="No"/> No</label>
+          </div>
+          <span class="error-msg" id="vaccines-err">Selecciona una opción</span>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(2)">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: Salud -->
+    <div class="form-section" id="step3">
+      <div class="section-title">Salud y Cuidados</div>
+      <div class="section-sub">Información médica de la mascota</div>
+      <div class="field-grid single">
+        <div class="field"><label>Alergias / Condición médica</label><textarea id="allergies" placeholder="Describe cualquier alergia o condición médica conocida..."></textarea></div>
+        <div class="field"><label>Medicamentos actuales</label><textarea id="medications" placeholder="Nombre del medicamento, dosis y frecuencia..."></textarea></div>
+        <div class="field"><label>Rutina de ejercicios habitual</label><textarea id="exercise" placeholder="Ej: Caminata de 30 minutos dos veces al día..."></textarea></div>
+      </div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 4: Alimentación -->
+    <div class="form-section" id="step4">
+      <div class="section-title">Alimentación</div>
+      <div class="section-sub">Hábitos y preferencias alimentarias</div>
+      <div class="field-grid single">
+        <div class="field" id="f-food"><label>Marca de alimento<span class="req">*</span></label><input type="text" id="food" placeholder="Ej: Royal Canin, Purina Pro Plan..."/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-feedingSchedule"><label>Frecuencia y cantidad diaria<span class="req">*</span></label><input type="text" id="feedingSchedule" placeholder="Ej: 2 tazas, 2 veces al día"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field"><label>Restricciones alimentarias</label><textarea id="foodRestrictions" placeholder="Ej: Sin pollo, sin granos..."></textarea></div>
+      </div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(4)">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 5: Temperamento y Veterinario -->
+    <div class="form-section" id="step5">
+      <div class="section-title">Temperamento y Comportamiento</div>
+      <div class="section-sub">Información crítica de seguridad — todos los campos son requeridos</div>
+      <div class="field-grid single">
+        <div class="field" id="f-temperament">
+          <label>Temperamento general<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="temperament" value="Tranquilo"/> Tranquilo</label>
+            <label class="radio-opt"><input type="radio" name="temperament" value="Ansioso"/> Ansioso</label>
+            <label class="radio-opt"><input type="radio" name="temperament" value="Juguetón"/> Juguetón</label>
+            <label class="radio-opt"><input type="radio" name="temperament" value="Dominante"/> Dominante</label>
+            <label class="radio-opt"><input type="radio" name="temperament" value="Agresivo"/> Agresivo</label>
+          </div>
+          <span class="error-msg" id="temperament-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-aggrDogs">
+          <label>¿Es agresivo con otros perros?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="aggrDogs" value="No" onclick="toggleConditional('aggrDogsExp',false)"/> No</label>
+            <label class="radio-opt"><input type="radio" name="aggrDogs" value="Sí" onclick="toggleConditional('aggrDogsExp',true)"/> Sí</label>
+            <label class="radio-opt"><input type="radio" name="aggrDogs" value="A veces" onclick="toggleConditional('aggrDogsExp',true)"/> A veces</label>
+          </div>
+          <div class="conditional-field" id="aggrDogsExp"><textarea id="aggrDogsDetail" placeholder="Explica en qué situaciones ocurre y cómo reacciona..."></textarea></div>
+          <span class="error-msg" id="aggrDogs-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-aggrPeople">
+          <label>¿Es agresivo con personas?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="aggrPeople" value="No" onclick="toggleConditional('aggrPeopleExp',false)"/> No</label>
+            <label class="radio-opt"><input type="radio" name="aggrPeople" value="Sí" onclick="toggleConditional('aggrPeopleExp',true)"/> Sí</label>
+            <label class="radio-opt"><input type="radio" name="aggrPeople" value="A veces" onclick="toggleConditional('aggrPeopleExp',true)"/> A veces</label>
+          </div>
+          <div class="conditional-field" id="aggrPeopleExp"><textarea id="aggrPeopleDetail" placeholder="Explica en qué situaciones ocurre y con quiénes..."></textarea></div>
+          <span class="error-msg" id="aggrPeople-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-bitten">
+          <label>¿Ha mordido alguna vez?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="bitten" value="No" onclick="toggleConditional('bittenExp',false)"/> No</label>
+            <label class="radio-opt"><input type="radio" name="bitten" value="Sí" onclick="toggleConditional('bittenExp',true)"/> Sí</label>
+          </div>
+          <div class="conditional-field" id="bittenExp"><textarea id="bittenDetail" placeholder="Describe las circunstancias, cuándo y a quién..."></textarea></div>
+          <span class="error-msg" id="bitten-err">Selecciona una opción</span>
+        </div>
+        <div class="field" id="f-strangers">
+          <label>¿Cómo reacciona con extraños?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="radio" name="strangers" value="Amigable"/> Amigable</label>
+            <label class="radio-opt"><input type="radio" name="strangers" value="Nervioso"/> Nervioso</label>
+            <label class="radio-opt"><input type="radio" name="strangers" value="Agresivo"/> Agresivo</label>
+            <label class="radio-opt"><input type="radio" name="strangers" value="Indiferente"/> Indiferente</label>
+          </div>
+          <span class="error-msg" id="strangers-err">Selecciona una opción</span>
+        </div>
+        <div class="field"><label>¿Tiene detonantes conocidos?</label><textarea id="triggers" placeholder="Ej: Ruidos fuertes, niños, bicicletas, otros machos..."></textarea></div>
+      </div>
+
+      <div style="height:20px;"></div>
+      <div class="section-title">Veterinario y Emergencias</div>
+      <div class="section-sub" style="margin-bottom:14px;">Contactos en caso de necesidad médica</div>
+      <div class="field-grid">
+        <div class="field" id="f-vetName"><label>Nombre del veterinario<span class="req">*</span></label><input type="text" id="vetName" placeholder="Dr. / Dra."/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-vetPhone"><label>Teléfono del veterinario<span class="req">*</span></label><input type="tel" id="vetPhone" placeholder="787-000-0000"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field full" id="f-vetClinic"><label>Clínica veterinaria<span class="req">*</span></label><input type="text" id="vetClinic" placeholder="Nombre de la clínica"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-emergencyName"><label>Contacto de emergencia<span class="req">*</span></label><input type="text" id="emergencyName" placeholder="Nombre completo"/><span class="error-msg">Este campo es requerido</span></div>
+        <div class="field" id="f-emergencyPhone"><label>Teléfono de emergencia<span class="req">*</span></label><input type="tel" id="emergencyPhone" placeholder="787-000-0000"/><span class="error-msg">Este campo es requerido</span></div>
+      </div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(5)">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 6: Documentos, Estadía y Declaración -->
+    <div class="form-section" id="step6">
+      <div class="section-title">Documentos de Salud</div>
+      <div class="section-sub">Evidencia requerida — formatos aceptados: JPG, PNG, PDF (máx. 5MB)</div>
+      <div class="field-grid single">
+        <div class="field" id="f-vaccineFile">
+          <label>Evidencia de vacunas<span class="req">*</span></label>
+          <div class="file-upload-area" id="vaccineUploadArea">
+            <input type="file" id="vaccineFile" accept="image/*,.pdf" onchange="handleFileSelect('vaccine',this)"/>
+            <div class="file-upload-icon">💉</div>
+            <div class="file-upload-text">Arrastra el archivo aquí o <strong>haz click para seleccionar</strong></div>
+            <div class="file-upload-text" style="margin-top:4px;">Foto o PDF del carnet de vacunas</div>
+          </div>
+          <div class="file-preview" id="vaccinePreview">
+            <span style="font-size:20px;">📄</span>
+            <span class="file-preview-name" id="vaccineFileName"></span>
+            <span class="file-preview-size" id="vaccineFileSize"></span>
+            <span class="file-preview-remove" onclick="removeFile('vaccine')">✕</span>
+          </div>
+          <div class="upload-progress" id="vaccineProgress">
+            <div class="progress-bar"><div class="progress-bar-fill" id="vaccineProgressFill"></div></div>
+            <div class="upload-status" id="vaccineStatus">Subiendo...</div>
+          </div>
+          <span class="error-msg" id="vaccine-err">Este documento es requerido</span>
+        </div>
+
+        <div class="field" id="f-parasiteFile">
+          <label>Evidencia de preventivos contra parásitos<span class="req">*</span></label>
+          <div class="file-upload-area" id="parasiteUploadArea">
+            <input type="file" id="parasiteFile" accept="image/*,.pdf" onchange="handleFileSelect('parasite',this)"/>
+            <div class="file-upload-icon">🛡️</div>
+            <div class="file-upload-text">Arrastra el archivo aquí o <strong>haz click para seleccionar</strong></div>
+            <div class="file-upload-text" style="margin-top:4px;">Foto o PDF del preventivo (pulgas, garrapatas, heartworm)</div>
+          </div>
+          <div class="file-preview" id="parasitePreview">
+            <span style="font-size:20px;">📄</span>
+            <span class="file-preview-name" id="parasiteFileName"></span>
+            <span class="file-preview-size" id="parasiteFileSize"></span>
+            <span class="file-preview-remove" onclick="removeFile('parasite')">✕</span>
+          </div>
+          <div class="upload-progress" id="parasiteProgress">
+            <div class="progress-bar"><div class="progress-bar-fill" id="parasiteProgressFill"></div></div>
+            <div class="upload-status" id="parasiteStatus">Subiendo...</div>
+          </div>
+          <span class="error-msg" id="parasite-err">Este documento es requerido</span>
+        </div>
+      </div>
+
+      <div style="height:20px;"></div>
+      <div class="section-title">Estadía</div>
+      <div class="section-sub" style="margin-bottom:14px;">Fechas estimadas</div>
+      <div class="field-grid">
+        <div class="field" id="f-intakeDate"><label>Fecha de ingreso deseada<span class="req">*</span></label><input type="date" id="intakeDate"/><span class="error-msg">Selecciona una fecha</span></div>
+        <div class="field" id="f-weeks">
+          <label>Semanas de estadía estimadas<span class="req">*</span></label>
+          <select id="weeks">
+            <option value="">-- Seleccionar --</option>
+            <option value="1">1 semana</option>
+            <option value="2">2 semanas</option>
+            <option value="3">3 semanas</option>
+            <option value="4">4 semanas</option>
+            <option value="5">5 semanas o más</option>
+          </select>
+          <span class="error-msg">Selecciona las semanas</span>
+        </div>
+        <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
+      </div>
+
+      <div style="margin-top:20px;">
+        <label style="margin-bottom:10px;display:block;">Declaración de responsabilidad<span class="req">*</span></label>
+        <div class="decl-wrap">
+          <input type="checkbox" id="declaration"/>
+          <div class="decl-text">
+            <strong>Declaro que toda la información provista en este formulario es correcta y verídica.</strong>
+            Me responsabilizo por cualquier incidente causado por omitir o falsificar información sobre el comportamiento o condición médica de mi mascota.
+            Entiendo que Paws Training by Pet Lovers Sitting se reserva el derecho de rechazar o discontinuar el servicio si la información resulta incorrecta o si la mascota representa un riesgo para el personal u otras mascotas.
+          </div>
+        </div>
+        <span class="error-msg" id="decl-err" style="display:none;margin-top:6px;">Debes aceptar la declaración para continuar</span>
+      </div>
+
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(6)">← Atrás</button>
+        <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar solicitud ✓</button>
+      </div>
+    </div>
+
+  </form>
+
+  <div id="successScreen">
+    <div class="success-icon">🐾</div>
+    <div class="success-title">¡Solicitud Recibida!</div>
+    <p class="success-msg">Gracias por confiar en <strong>Paws Training by Pet Lovers Sitting</strong>.<br/><br/>Hemos recibido la información de tu mascota. Nos comunicaremos contigo en un máximo de <strong>24 horas</strong> para confirmar disponibilidad.<br/><br/>📞 787-245-7292 &nbsp;|&nbsp; @PawsTrainingPR</p>
+  </div>
+</main>
+
+<footer>PawsTrainingPR &nbsp;|&nbsp; 787-245-7292 &nbsp;|&nbsp; @PawsTrainingPR</footer>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB6RqpTZ81SyOc5nF0shEw_t7MKFSl0BhI",
+    authDomain: "paws-tracker-cd336.firebaseapp.com",
+    projectId: "paws-tracker-cd336",
+    storageBucket: "paws-tracker-cd336.firebasestorage.app",
+    messagingSenderId: "278221902529",
+    appId: "1:278221902529:web:e80306edaa6ab4788efa40"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const storage = getStorage(app);
+
+  window.uploadFile = (file, path, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const storageRef = ref(storage, path);
+      const task = uploadBytesResumable(storageRef, file);
+      task.on('state_changed',
+        snap => onProgress(Math.round(snap.bytesTransferred/snap.totalBytes*100)),
+        reject,
+        () => getDownloadURL(task.snapshot.ref).then(resolve).catch(reject)
+      );
+    });
+  };
+
+  window.saveIntake = async (data) => {
+    await addDoc(collection(db, 'intakes'), {
+      ...data, status: 'pendiente', createdAt: serverTimestamp()
+    });
+  };
+</script>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 6;
+  const files = { vaccine: null, parasite: null };
+  const fileURLs = { vaccine: null, parasite: null };
+
+  function updateProgress(step) {
+    document.getElementById('stepIndicator').textContent = `Paso ${step} de ${totalSteps}`;
+    for(let i=1;i<=totalSteps;i++){
+      const el=document.getElementById('ps'+i);
+      el.classList.remove('active','done');
+      if(i<step) el.classList.add('done');
+      else if(i===step) el.classList.add('active');
+    }
+  }
+
+  function showStep(step) {
+    document.querySelectorAll('.form-section').forEach(s=>s.classList.remove('active'));
+    document.getElementById('step'+step).classList.add('active');
+    currentStep=step; updateProgress(step);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function toggleConditional(id,show) {
+    const el=document.getElementById(id);
+    show ? el.classList.add('visible') : el.classList.remove('visible');
+  }
+
+  function getRadio(name) {
+    const c=document.querySelector(`input[name="${name}"]:checked`);
+    return c?c.value:'';
+  }
+
+  function markError(id,show) {
+    const el=document.getElementById('f-'+id);
+    if(!el) return;
+    show ? el.classList.add('has-error') : el.classList.remove('has-error');
+  }
+
+  function handleFileSelect(type, input) {
+    const file = input.files[0];
+    if(!file) return;
+    if(file.size > 5*1024*1024) {
+      alert('El archivo no puede exceder 5MB. Por favor selecciona un archivo más pequeño.');
+      input.value=''; return;
+    }
+    files[type] = file;
+    document.getElementById(type+'FileName').textContent = file.name;
+    document.getElementById(type+'FileSize').textContent = (file.size/1024/1024).toFixed(1)+' MB';
+    document.getElementById(type+'Preview').classList.add('visible');
+    document.getElementById(type+'UploadArea').style.display='none';
+    document.getElementById(type+'-err').style.display='none';
+    document.getElementById('f-'+type+'File').classList.remove('has-error');
+  }
+
+  function removeFile(type) {
+    files[type]=null; fileURLs[type]=null;
+    document.getElementById(type+'File').value='';
+    document.getElementById(type+'Preview').classList.remove('visible');
+    document.getElementById(type+'UploadArea').style.display='block';
+    document.getElementById(type+'Progress').classList.remove('visible');
+  }
+
+  async function uploadFiles() {
+    const timestamp = Date.now();
+    const dogName = document.getElementById('dogName').value.trim().replace(/[^a-zA-Z0-9]/g,'_');
+
+    for(const type of ['vaccine','parasite']) {
+      if(!files[type]) continue;
+      const ext = files[type].name.split('.').pop();
+      const path = `intakes/${dogName}_${timestamp}/${type}.${ext}`;
+      document.getElementById(type+'Progress').classList.add('visible');
+      try {
+        fileURLs[type] = await window.uploadFile(files[type], path, pct => {
+          document.getElementById(type+'ProgressFill').style.width=pct+'%';
+          document.getElementById(type+'Status').textContent = pct===100 ? '✅ Subido correctamente' : `Subiendo... ${pct}%`;
+        });
+      } catch(e) {
+        document.getElementById(type+'Status').textContent='❌ Error al subir. Intenta de nuevo.';
+        throw e;
+      }
+    }
+  }
+
+  function validateStep(step) {
+    let valid=true;
+    if(step===1) {
+      const name=document.getElementById('ownerName').value.trim();
+      const addr=document.getElementById('address').value.trim();
+      const ph=document.getElementById('phone1').value.trim();
+      const em=document.getElementById('email').value.trim();
+      markError('ownerName',!name); if(!name) valid=false;
+      markError('address',!addr);   if(!addr) valid=false;
+      markError('phone1',!ph);      if(!ph) valid=false;
+      const emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+      markError('email',!emailOk);  if(!emailOk) valid=false;
+    }
+    if(step===2) {
+      const dog=document.getElementById('dogName').value.trim();
+      const breed=document.getElementById('breed').value.trim();
+      const sex=getRadio('sex'); const neut=getRadio('neutered'); const vacc=getRadio('vaccines');
+      markError('dogName',!dog);  if(!dog) valid=false;
+      markError('breed',!breed);  if(!breed) valid=false;
+      const se=document.getElementById('sex-err'); if(!sex){se.style.display='block';valid=false;}else{se.style.display='none';}
+      const ne=document.getElementById('neutered-err'); if(!neut){ne.style.display='block';valid=false;}else{ne.style.display='none';}
+      const ve=document.getElementById('vaccines-err'); if(!vacc){ve.style.display='block';valid=false;}else{ve.style.display='none';}
+    }
+    if(step===4) {
+      const food=document.getElementById('food').value.trim();
+      const freq=document.getElementById('feedingSchedule').value.trim();
+      markError('food',!food);            if(!food) valid=false;
+      markError('feedingSchedule',!freq); if(!freq) valid=false;
+    }
+    if(step===5) {
+      const temp=getRadio('temperament'); const agD=getRadio('aggrDogs');
+      const agP=getRadio('aggrPeople'); const bit=getRadio('bitten'); const str=getRadio('strangers');
+      const te=document.getElementById('temperament-err'); if(!temp){te.style.display='block';valid=false;}else{te.style.display='none';}
+      const ade=document.getElementById('aggrDogs-err');
+      if(!agD){ade.textContent='Selecciona una opción';ade.style.display='block';valid=false;}
+      else if((agD==='Sí'||agD==='A veces')&&!document.getElementById('aggrDogsDetail').value.trim()){ade.textContent='Explica la agresividad con otros perros';ade.style.display='block';valid=false;}
+      else{ade.style.display='none';}
+      const ape=document.getElementById('aggrPeople-err');
+      if(!agP){ape.textContent='Selecciona una opción';ape.style.display='block';valid=false;}
+      else if((agP==='Sí'||agP==='A veces')&&!document.getElementById('aggrPeopleDetail').value.trim()){ape.textContent='Explica la agresividad con personas';ape.style.display='block';valid=false;}
+      else{ape.style.display='none';}
+      const be=document.getElementById('bitten-err');
+      if(!bit){be.textContent='Selecciona una opción';be.style.display='block';valid=false;}
+      else if(bit==='Sí'&&!document.getElementById('bittenDetail').value.trim()){be.textContent='Describe las circunstancias';be.style.display='block';valid=false;}
+      else{be.style.display='none';}
+      const ste=document.getElementById('strangers-err'); if(!str){ste.style.display='block';valid=false;}else{ste.style.display='none';}
+      ['vetName','vetPhone','vetClinic','emergencyName','emergencyPhone'].forEach(id=>{
+        const v=document.getElementById(id).value.trim();
+        markError(id,!v); if(!v) valid=false;
+      });
+    }
+    if(step===6) {
+      if(!files.vaccine){document.getElementById('vaccine-err').style.display='block';document.getElementById('f-vaccineFile').classList.add('has-error');valid=false;}
+      if(!files.parasite){document.getElementById('parasite-err').style.display='block';document.getElementById('f-parasiteFile').classList.add('has-error');valid=false;}
+      const date=document.getElementById('intakeDate').value;
+      const weeks=document.getElementById('weeks').value;
+      const decl=document.getElementById('declaration').checked;
+      markError('intakeDate',!date); if(!date) valid=false;
+      markError('weeks',!weeks);     if(!weeks) valid=false;
+      const de=document.getElementById('decl-err');
+      if(!decl){de.style.display='block';valid=false;}else{de.style.display='none';}
+    }
+    return valid;
+  }
+
+  function nextStep(step){ if(!validateStep(step)) return; if(step<totalSteps) showStep(step+1); }
+  function prevStep(step){ if(step>1) showStep(step-1); }
+
+  async function submitForm() {
+    if(!validateStep(6)) return;
+    const btn=document.getElementById('submitBtn');
+    btn.textContent='Subiendo documentos...'; btn.disabled=true;
+    try {
+      await uploadFiles();
+      btn.textContent='Enviando solicitud...';
+      const data={
+        ownerName:document.getElementById('ownerName').value.trim(),
+        address:document.getElementById('address').value.trim(),
+        phone1:document.getElementById('phone1').value.trim(),
+        phone2:document.getElementById('phone2').value.trim(),
+        email:document.getElementById('email').value.trim(),
+        dogName:document.getElementById('dogName').value.trim(),
+        breed:document.getElementById('breed').value.trim(),
+        color:document.getElementById('color').value.trim(),
+        dob:document.getElementById('dob').value,
+        weight:document.getElementById('weight').value.trim(),
+        sex:getRadio('sex'), neutered:getRadio('neutered'), vaccines:getRadio('vaccines'),
+        allergies:document.getElementById('allergies').value.trim(),
+        medications:document.getElementById('medications').value.trim(),
+        exercise:document.getElementById('exercise').value.trim(),
+        food:document.getElementById('food').value.trim(),
+        feedingSchedule:document.getElementById('feedingSchedule').value.trim(),
+        foodRestrictions:document.getElementById('foodRestrictions').value.trim(),
+        temperament:getRadio('temperament'),
+        aggrDogs:getRadio('aggrDogs'),
+        aggrDogsDetail:document.getElementById('aggrDogsDetail').value.trim(),
+        aggrPeople:getRadio('aggrPeople'),
+        aggrPeopleDetail:document.getElementById('aggrPeopleDetail').value.trim(),
+        bitten:getRadio('bitten'),
+        bittenDetail:document.getElementById('bittenDetail').value.trim(),
+        strangers:getRadio('strangers'),
+        triggers:document.getElementById('triggers').value.trim(),
+        vetName:document.getElementById('vetName').value.trim(),
+        vetPhone:document.getElementById('vetPhone').value.trim(),
+        vetClinic:document.getElementById('vetClinic').value.trim(),
+        emergencyName:document.getElementById('emergencyName').value.trim(),
+        emergencyPhone:document.getElementById('emergencyPhone').value.trim(),
+        intakeDate:document.getElementById('intakeDate').value,
+        weeks:document.getElementById('weeks').value,
+        extraNotes:document.getElementById('extraNotes').value.trim(),
+        vaccineFileURL: fileURLs.vaccine || '',
+        parasiteFileURL: fileURLs.parasite || '',
+      };
+      await window.saveIntake(data);
+      document.getElementById('intakeForm').style.display='none';
+      document.getElementById('stepIndicator').style.display='none';
+      document.getElementById('progressBar').style.display='none';
+      document.querySelector('.form-hero').style.display='none';
+      document.getElementById('successScreen').style.display='block';
+    } catch(e) {
+      console.error(e);
+      btn.textContent='Error — intenta de nuevo';
+      btn.disabled=false;
+    }
+  }
+</script>
+</body>
+</html>
