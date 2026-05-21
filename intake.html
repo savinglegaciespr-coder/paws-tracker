@@ -576,6 +576,7 @@
     try {
       await uploadFiles();
       btn.textContent='Enviando solicitud...';
+      btn.style.background='var(--green)';
       const data={
         ownerName:document.getElementById('ownerName').value.trim(),
         address:document.getElementById('address').value.trim(),
@@ -622,8 +623,62 @@
       document.getElementById('successScreen').style.display='block';
     } catch(e) {
       console.error(e);
-      btn.textContent='Error — intenta de nuevo';
+      // Check if files uploaded but something else failed - try to save anyway
+      if(fileURLs.vaccine || fileURLs.parasite) {
+        // Files uploaded, try to save the form data
+        try {
+          btn.textContent='Enviando solicitud...';
+          const data={
+            ownerName:document.getElementById('ownerName').value.trim(),
+            address:document.getElementById('address').value.trim(),
+            phone1:document.getElementById('phone1').value.trim(),
+            phone2:document.getElementById('phone2').value.trim(),
+            email:document.getElementById('email').value.trim(),
+            dogName:document.getElementById('dogName').value.trim(),
+            breed:document.getElementById('breed').value.trim(),
+            color:document.getElementById('color').value.trim(),
+            dob:document.getElementById('dob').value,
+            weight:document.getElementById('weight').value.trim(),
+            sex:getRadio('sex'), neutered:getRadio('neutered'), vaccines:getRadio('vaccines'),
+            allergies:document.getElementById('allergies').value.trim(),
+            medications:document.getElementById('medications').value.trim(),
+            exercise:document.getElementById('exercise').value.trim(),
+            food:document.getElementById('food').value.trim(),
+            feedingSchedule:document.getElementById('feedingSchedule').value.trim(),
+            foodRestrictions:document.getElementById('foodRestrictions').value.trim(),
+            temperament:getRadio('temperament'),
+            aggrDogs:getRadio('aggrDogs'),
+            aggrDogsDetail:document.getElementById('aggrDogsDetail').value.trim(),
+            aggrPeople:getRadio('aggrPeople'),
+            aggrPeopleDetail:document.getElementById('aggrPeopleDetail').value.trim(),
+            bitten:getRadio('bitten'),
+            bittenDetail:document.getElementById('bittenDetail').value.trim(),
+            strangers:getRadio('strangers'),
+            triggers:document.getElementById('triggers').value.trim(),
+            vetName:document.getElementById('vetName').value.trim(),
+            vetPhone:document.getElementById('vetPhone').value.trim(),
+            vetClinic:document.getElementById('vetClinic').value.trim(),
+            emergencyName:document.getElementById('emergencyName').value.trim(),
+            emergencyPhone:document.getElementById('emergencyPhone').value.trim(),
+            intakeDate:document.getElementById('intakeDate').value,
+            weeks:document.getElementById('weeks').value,
+            extraNotes:document.getElementById('extraNotes').value.trim(),
+            vaccineFileURL: fileURLs.vaccine || '',
+            parasiteFileURL: fileURLs.parasite || '',
+          };
+          await window.saveIntake(data);
+          document.getElementById('intakeForm').style.display='none';
+          document.getElementById('stepIndicator').style.display='none';
+          document.getElementById('progressBar').style.display='none';
+          document.querySelector('.form-hero').style.display='none';
+          document.getElementById('successScreen').style.display='block';
+          return;
+        } catch(e2) { console.error(e2); }
+      }
+      btn.textContent='❌ Error — intenta de nuevo';
+      btn.style.background='var(--red)';
       btn.disabled=false;
+      setTimeout(()=>{ btn.textContent='Enviar solicitud ✓'; btn.style.background=''; btn.disabled=false; }, 3000);
     }
   }
 </script>
