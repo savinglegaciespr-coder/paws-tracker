@@ -391,7 +391,7 @@
   const db  = getFirestore(app);
   const storage = getStorage(app);
 
-  // Upload file - resolves with storage path
+  // Upload file - resolves with public download URL
   window.uploadFile = (file, storagePath, onProgress) => {
     return new Promise((resolve, reject) => {
       const storageRef = ref(storage, storagePath);
@@ -405,9 +405,12 @@
           console.error('Upload error:', error);
           reject(error);
         },
-        () => {
-          // Upload complete - resolve with path
-          resolve('gs://paws-tracker-cd336.firebasestorage.app/' + storagePath);
+        async () => {
+          // Build public download URL using Firebase Storage REST API
+          const bucket = 'paws-tracker-cd336.firebasestorage.app';
+          const encodedPath = encodeURIComponent(storagePath);
+          const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+          resolve(downloadURL);
         }
       );
     });
