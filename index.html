@@ -785,7 +785,7 @@
 
   <!-- SOLICITUDES -->
   <div class="panel" id="panel-solicitudes">
-    <div style="max-width:700px;margin:0 auto;width:100%;">
+    <div style="max-width:680px;margin:0 auto;padding:0 4px;box-sizing:border-box;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title" style="margin-bottom:4px;">📥 Solicitudes de Inscripción</div>
@@ -1666,16 +1666,16 @@ async function loadIntakes() {
 
     const renderIntake = (intake) => {
       const isPending = intake.status === 'pendiente';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:12px;padding:12px;margin-bottom:12px;box-sizing:border-box;overflow:hidden;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:800;color:var(--text);overflow-wrap:break-word;">${intake.dogName} <span style="font-size:11px;color:var(--muted);font-weight:400;">— ${intake.breed||''}</span></div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px;overflow-wrap:break-word;">${intake.ownerName} · ${intake.phone1||''}</div>
-            <div style="font-size:10px;color:var(--muted);overflow-wrap:break-word;">${intake.email||''}</div>
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;">
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);">${intake.dogName}</div>
+            <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;background:var(--surface2);padding:2px 8px;border-radius:20px;">${statusLabel[intake.status]||intake.status}</span>
           </div>
-          <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">${statusLabel[intake.status]||intake.status}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${intake.breed||''} · ${intake.ownerName}</div>
+          <div style="font-size:11px;color:var(--muted);">${intake.phone1||''} · ${intake.email||''}</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:10px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:4px;margin-bottom:8px;">
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
             <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
@@ -1761,11 +1761,18 @@ async function confirmReject(id) {
 async function confirmDelete(id) {
   try {
     await window.FB.deleteIntake(id);
-    flash('Solicitud eliminada.');
-    loadIntakes();
+    // Remove card from DOM immediately without reload
+    const btn = document.querySelector('.btn-delete-intake[data-id="'+id+'"]');
+    if(btn) {
+      const card = btn.closest('div[style*="border-radius:12px"]');
+      if(card) card.remove();
+    }
+    // Update badge count
+    const badge = document.getElementById('intakeBadge');
+    flash('✅ Solicitud eliminada.');
   } catch(e) {
     console.error('Delete error:', e);
-    flash('Error al eliminar. Intenta de nuevo.');
+    flash('Error al eliminar.');
   }
 }
 
