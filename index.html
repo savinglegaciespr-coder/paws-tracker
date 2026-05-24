@@ -325,11 +325,14 @@
   .tabs {
     background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 0 28px; display: flex; gap: 4px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab {
     padding: 11px 22px; cursor: pointer; font-size: 12px; font-weight: 700;
     letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
     border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all .2s;
+    flex-shrink: 0; white-space: nowrap;
   }
   .tab.active { color: var(--green); border-bottom-color: var(--green); }
   .tab:hover:not(.active) { color: var(--white); }
@@ -1707,7 +1710,7 @@ async function loadIntakes() {
           ${intake.food?'<b>Alimento:</b> '+intake.food+' — '+intake.feedingSchedule:''}
         </div>`:''}
         ${intake.vetName ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
-          <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic} &nbsp;|&nbsp;
+          <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic}<br/>
           <b>Emergencia:</b> ${intake.emergencyName} · ${intake.emergencyPhone}
         </div>`:''}
         ${(intake.vaccineFileURL || intake.parasiteFileURL) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
@@ -1716,7 +1719,7 @@ async function loadIntakes() {
         </div>` : '<div style="font-size:11px;color:var(--red);margin-bottom:10px;">⚠️ Sin documentos adjuntos</div>'}
         ${isPending ? `<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
           <button class="btn btn-sm btn-primary" style="flex:1;" onclick="confirmApprove('${intake.id}')">✅ Aprobar e importar</button>
-          <button class="btn btn-sm btn-danger" style="padding:6px 16px;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
+          <button class="btn btn-sm btn-danger" style="flex:1;" onclick="confirmReject('${intake.id}')">✕ Rechazar</button>
         </div>` : intake.status === 'rechazado' ? `<div style="margin-top:4px;">
           <button data-id="${intake.id}" class="btn-delete-intake" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;">🗑️ Eliminar solicitud rechazada</button>
         </div>` : ''}
@@ -1759,17 +1762,11 @@ async function confirmReject(id) {
 }
 
 async function confirmDelete(id) {
+  if (!confirm('¿Eliminar esta solicitud rechazada? No se puede deshacer.')) return;
   try {
     await window.FB.deleteIntake(id);
-    // Remove card from DOM immediately without reload
-    const btn = document.querySelector('.btn-delete-intake[data-id="'+id+'"]');
-    if(btn) {
-      const card = btn.closest('div[style*="border-radius:12px"]');
-      if(card) card.remove();
-    }
-    // Update badge count
-    const badge = document.getElementById('intakeBadge');
     flash('✅ Solicitud eliminada.');
+    loadIntakes();
   } catch(e) {
     console.error('Delete error:', e);
     flash('Error al eliminar.');
