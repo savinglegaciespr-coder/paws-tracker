@@ -927,6 +927,8 @@
 </div>
 
 <script>
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 let editingId = null;
 
 
@@ -1006,8 +1008,8 @@ function renderStudents(){
     return `<tr style="${rowStyle}">
     <td style="color:var(--muted);font-size:12px;">${i+1}</td>
     <td>
-      <strong>${s.name}</strong>${alertBadge}
-      ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${s.obs.length>60?s.obs.slice(0,60)+'...':s.obs}</div>` : ''}
+      <strong>${esc(s.name)}</strong>${alertBadge}
+      ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${esc(s.obs.length>60?s.obs.slice(0,60)+'...':s.obs)}</div>` : ''}
     </td>
     <td>${fmtDate(s.intake)}</td>
     <td>${daysBadge}</td>
@@ -1133,9 +1135,9 @@ function renderLogs(){
     return `<div class="log-card ${cls}">
       <div class="log-icon">${icon}</div>
       <div class="log-body">
-        <div class="log-top"><span class="log-name">${l.dog}</span>${chips}</div>
+        <div class="log-top"><span class="log-name">${esc(l.dog)}</span>${chips}</div>
         <div class="log-meta">${ds}</div>
-        ${l.notes?`<div class="log-notes">"${l.notes}"</div>`:''}
+        ${l.notes?`<div class="log-notes">"${esc(l.notes)}"</div>`:''}
       </div>
       <button class="log-del" onclick="delLog('${safeId}')">✕</button>
     </div>`;
@@ -1466,7 +1468,7 @@ function openDogReport(id){
         return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;background:var(--surface2);">
           <div style="font-size:12px;color:var(--muted);">${fmtD(l.date)}</div>
           <div style="font-weight:700;font-size:13px;margin:4px 0;">${types}</div>
-          ${l.notes?`<div style="font-size:12px;color:#c0bdb8;font-style:italic;">"${l.notes}"</div>`:''}
+          ${l.notes?`<div style="font-size:12px;color:#c0bdb8;font-style:italic;">"${esc(l.notes)}"</div>`:''}
         </div>`;
       }).join('')
     : '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Sin actividades registradas.</p>';
@@ -1488,7 +1490,7 @@ function openDogReport(id){
     </div>
     ${s.obs ? `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:8px;padding:10px 14px;margin-bottom:14px;">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:4px;">📋 Observaciones</div>
-      <div style="font-size:13px;color:var(--text);">${s.obs}</div>
+      <div style="font-size:13px;color:var(--text);">${esc(s.obs)}</div>
     </div>` : ''}
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Historial de actividades</div>
     ${logRows}`;
@@ -1519,7 +1521,7 @@ function exportDogReport(){
     +'<body style="font-family:Arial,sans-serif;padding:28px;color:#222;">'
     +'<h1 style="color:#6db33f;font-size:22px;margin-bottom:2px;">PAWS TRAINING</h1>'
     +'<p style="color:#888;font-size:11px;margin-bottom:16px;">by Pet Lovers Sitting</p>'
-    +'<h2 style="font-size:20px;margin-bottom:4px;">'+s.name+'</h2>'
+    +'<h2 style="font-size:20px;margin-bottom:4px;">'+esc(s.name)+'</h2>'
     +'<p style="color:#888;font-size:12px;margin-bottom:20px;">Ingreso: '+fmtD(s.intake)+' &nbsp;·&nbsp; Salida: '+fmtD(s.date)+'</p>'
     +'<div style="display:flex;gap:16px;margin-bottom:24px;">'
     +'<div style="background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:10px 18px;text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;">Días</div><div style="font-size:24px;font-weight:bold;color:#6db33f;">'+daysIn+'</div></div>'
@@ -1606,7 +1608,7 @@ function renderCalendar(){
     let namesHtml = isSun ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
       const allNames = [...new Set([...ev.in,...ev.out])];
-      namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${n}</div>`).join('');
+      namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${esc(n)}</div>`).join('');
       if(allNames.length>2) namesHtml += `<div style="font-size:9px;color:var(--muted);">+${allNames.length-2} más</div>`;
     }
 
@@ -1634,12 +1636,12 @@ function showCalDay(ds){
   let html2 = '';
   if(ins.length){
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
-    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${s.name}${s.obs?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">📋 '+s.obs.slice(0,40)+'</span>':''}</div>`).join('');
+    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.obs?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">📋 '+esc(s.obs.slice(0,40))+'</span>':''}</div>`).join('');
   }
   if(outs.length){
     if(ins.length) html2 += '<div style="height:12px;"></div>';
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:8px;">🟡 Salen</div>';
-    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${s.name}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+s.time+'</span>':''}</div>`).join('');
+    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+esc(s.time)+'</span>':''}</div>`).join('');
   }
   
   document.getElementById('calDetailContent').innerHTML = html2;
@@ -1708,11 +1710,11 @@ function _renderIntakes(list, intakesToRender) {
     return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;">
         <div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div style="font-size:14px;font-weight:800;color:var(--text);">${intake.dogName}</div>
-            <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;background:var(--surface2);padding:2px 8px;border-radius:20px;">${statusLabel[intake.status]||intake.status}</span>
+            <div style="font-size:14px;font-weight:800;color:var(--text);">${esc(intake.dogName)}</div>
+            <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;background:var(--surface2);padding:2px 8px;border-radius:20px;">${esc(statusLabel[intake.status]||intake.status)}</span>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${intake.breed||''} · ${intake.ownerName}</div>
-          <div style="font-size:11px;color:var(--muted);">${intake.phone1||''} · ${intake.email||''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
+          <div style="font-size:11px;color:var(--muted);">${esc(intake.phone1||'')} · ${esc(intake.email||'')}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:4px;margin-bottom:8px;">
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
@@ -1721,33 +1723,33 @@ function _renderIntakes(list, intakesToRender) {
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Semanas</div>
-            <div style="font-weight:700;">${intake.weeks||'—'}</div>
+            <div style="font-weight:700;">${esc(intake.weeks||'—')}</div>
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Temperamento</div>
-            <div style="font-weight:700;">${intake.temperament||'—'}</div>
+            <div style="font-weight:700;">${esc(intake.temperament||'—')}</div>
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo perros</div>
-            <div style="font-weight:700;color:${intake.aggrDogs==='No'?'var(--green)':'var(--red)'};">${intake.aggrDogs||'—'}</div>
+            <div style="font-weight:700;color:${intake.aggrDogs==='No'?'var(--green)':'var(--red)'};">${esc(intake.aggrDogs||'—')}</div>
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo personas</div>
-            <div style="font-weight:700;color:${intake.aggrPeople==='No'?'var(--green)':'var(--red)'};">${intake.aggrPeople||'—'}</div>
+            <div style="font-weight:700;color:${intake.aggrPeople==='No'?'var(--green)':'var(--red)'};">${esc(intake.aggrPeople||'—')}</div>
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ha mordido</div>
-            <div style="font-weight:700;color:${intake.bitten==='No'?'var(--green)':'var(--red)'};">${intake.bitten||'—'}</div>
+            <div style="font-weight:700;color:${intake.bitten==='No'?'var(--green)':'var(--red)'};">${esc(intake.bitten||'—')}</div>
           </div>
         </div>
         ${intake.allergies||intake.medications||intake.food ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;">
-          ${intake.allergies?'<b>Alergias:</b> '+intake.allergies+'<br/>':''}
-          ${intake.medications?'<b>Medicamentos:</b> '+intake.medications+'<br/>':''}
-          ${intake.food?'<b>Alimento:</b> '+intake.food+' — '+intake.feedingSchedule:''}
+          ${intake.allergies?'<b>Alergias:</b> '+esc(intake.allergies)+'<br/>':''}
+          ${intake.medications?'<b>Medicamentos:</b> '+esc(intake.medications)+'<br/>':''}
+          ${intake.food?'<b>Alimento:</b> '+esc(intake.food)+' — '+esc(intake.feedingSchedule):''}
         </div>`:''}
         ${intake.vetName ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
-          <b>Vet:</b> ${intake.vetName} · ${intake.vetPhone} · ${intake.vetClinic}<br/>
-          <b>Emergencia:</b> ${intake.emergencyName} · ${intake.emergencyPhone}
+          <b>Vet:</b> ${esc(intake.vetName)} · ${esc(intake.vetPhone)} · ${esc(intake.vetClinic)}<br/>
+          <b>Emergencia:</b> ${esc(intake.emergencyName)} · ${esc(intake.emergencyPhone)}
         </div>`:''}
         ${(intake.vaccineFileURL || intake.parasiteFileURL) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           ${intake.vaccineFileURL ? `<a href="${intake.vaccineFileURL}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--green);text-decoration:none;font-weight:700;">💉 Ver vacunas</a>` : ''}
@@ -1890,7 +1892,7 @@ async function loadUsers(){
   const roleLabels = {superadmin:'Super Admin',businessowner:'Business Owner',admin:'Admin',trainer:'Entrenador',operator:'Operador',pending:'Pendiente'};
   document.getElementById('usersList').innerHTML = users.length ? users.map(u => `
     <div class="user-row">
-      <div class="user-row-name">${u.name||'Sin nombre'}<br><span class="user-row-email">${u.email}</span></div>
+      <div class="user-row-name">${esc(u.name||'Sin nombre')}<br><span class="user-row-email">${esc(u.email)}</span></div>
       <select onchange="updateUserRole('${u.id}',this.value,${u.active})" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:12px;">
         ${roles.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${roleLabels[r]}</option>`).join('')}
       </select>
