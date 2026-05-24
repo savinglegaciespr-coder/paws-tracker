@@ -1791,7 +1791,7 @@ async function confirmClearHistory() {
     loadIntakes();
   } catch(e) {
     console.error(e);
-    flash('Error al limpiar historial.');
+    flash('Error: ' + (e.code || e.message || e));
   }
 }
 
@@ -1825,7 +1825,7 @@ async function confirmDelete(id) {
     loadIntakes();
   } catch(e) {
     console.error('Delete error:', e);
-    flash('Error al eliminar.');
+    flash('Error: ' + (e.code || e.message || e));
   }
 }
 
