@@ -88,6 +88,26 @@
   .success-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--green);margin-bottom:12px;}
   .success-msg{font-size:14px;color:var(--muted);line-height:1.7;max-width:420px;margin:0 auto;}
   footer{text-align:center;font-size:11px;color:var(--muted);padding:20px;letter-spacing:1px;}
+
+  /* Calendario de disponibilidad */
+  .ical-wrap{margin-top:6px;}
+  .ical-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .ical-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--white);}
+  .ical-nav{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:18px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s;}
+  .ical-nav:hover{border-color:var(--green);color:var(--green);}
+  .ical-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+  .ical-dow span{text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:4px 0;}
+  .ical-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .ical-day{min-height:48px;border-radius:8px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;transition:all .15s;}
+  .ical-day.empty{border:none;background:transparent;}
+  .ical-day.closed,.ical-day.past,.ical-day.full{background:var(--surface2);color:var(--muted);cursor:not-allowed;}
+  .ical-day.closed .ical-sub,.ical-day.full .ical-sub{font-size:8px;font-weight:400;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+  .ical-day.available{background:var(--green-dim);border-color:var(--green);color:var(--green2);cursor:pointer;}
+  .ical-day.available:hover{background:var(--green);color:#fff;transform:scale(1.05);}
+  .ical-day.selected{background:var(--green);border-color:var(--green2);color:#fff;transform:scale(1.05);}
+  .ical-info{margin-top:10px;font-size:12px;color:var(--green);font-weight:600;min-height:18px;text-align:center;}
+  .ical-loading{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+  .ical-sub{font-size:8px;font-weight:400;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
 </style>
 </head>
 <body>
@@ -325,9 +345,8 @@
 
       <div style="height:20px;"></div>
       <div class="section-title">Estadía</div>
-      <div class="section-sub" style="margin-bottom:14px;">Fechas estimadas</div>
+      <div class="section-sub" style="margin-bottom:14px;">Selecciona primero las semanas y luego la fecha de ingreso</div>
       <div class="field-grid">
-        <div class="field" id="f-intakeDate"><label>Fecha de ingreso deseada<span class="req">*</span></label><input type="date" id="intakeDate"/><span class="error-msg">Selecciona una fecha</span></div>
         <div class="field" id="f-weeks">
           <label>Semanas de estadía estimadas<span class="req">*</span></label>
           <select id="weeks">
@@ -339,6 +358,12 @@
             <option value="5">5 semanas o más</option>
           </select>
           <span class="error-msg">Selecciona las semanas</span>
+        </div>
+        <div class="field full" id="f-intakeDate">
+          <label>Fecha de ingreso deseada<span class="req">*</span></label>
+          <input type="hidden" id="intakeDate"/>
+          <div id="intakeCalWrap"><div class="ical-loading">Cargando disponibilidad...</div></div>
+          <span class="error-msg">Selecciona una fecha</span>
         </div>
         <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
       </div>
@@ -375,7 +400,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref, uploadBytesResumable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
   const firebaseConfig = {
@@ -421,6 +446,11 @@
       ...data, status: 'pendiente', createdAt: serverTimestamp()
     });
   };
+
+  window.loadAvailability = async () => {
+    const snap = await getDoc(doc(db, 'public', 'availability'));
+    return snap.exists() ? (snap.data().slots || []) : [];
+  };
 </script>
 
 <script>
@@ -444,6 +474,7 @@
     document.getElementById('step'+step).classList.add('active');
     currentStep=step; updateProgress(step);
     window.scrollTo({top:0,behavior:'smooth'});
+    if (step === 6) loadCalendar();
   }
 
   function toggleConditional(id,show) {
@@ -581,6 +612,144 @@
 
   function nextStep(step){ if(!validateStep(step)) return; if(step<totalSteps) showStep(step+1); }
   function prevStep(step){ if(step>1) showStep(step-1); }
+
+  // ── CALENDARIO DE DISPONIBILIDAD ──────────────────────────────
+  const CAL_MAX = 15;
+  let _calSlots = null;
+  let _calYear = null;
+  let _calMonth = null;
+  let _calSelectedDate = '';
+
+  function _dateStr(y, m, d) {
+    return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+
+  function _occupancyMap(slots) {
+    const map = {};
+    const now = new Date();
+    const todayStr = _dateStr(now.getFullYear(), now.getMonth(), now.getDate());
+    const limitDate = new Date(now);
+    limitDate.setDate(limitDate.getDate() + 61);
+
+    const cur = new Date(now);
+    cur.setDate(cur.getDate() + 1); // empieza mañana
+
+    while (cur < limitDate) {
+      const ds = _dateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
+      let count = 0;
+      slots.forEach(s => {
+        if (!s.intake) return;
+        // Un perro ocupa desde su intake hasta su date (inclusive)
+        // Disponible al día SIGUIENTE de su salida
+        const after = s.intake <= ds;
+        const before = !s.date || s.date >= ds;
+        if (after && before) count++;
+      });
+      map[ds] = count;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return map;
+  }
+
+  function renderIntakeCal() {
+    const wrap = document.getElementById('intakeCalWrap');
+    if (!_calSlots) return;
+
+    const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DOW = ['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
+
+    const occMap = _occupancyMap(_calSlots);
+    const firstDay = new Date(_calYear, _calMonth, 1);
+    const lastDay  = new Date(_calYear, _calMonth + 1, 0);
+    const startDow = (firstDay.getDay() + 6) % 7; // Lunes = 0
+
+    const now = new Date();
+    const todayStr = _dateStr(now.getFullYear(), now.getMonth(), now.getDate());
+
+    let dowHtml = DOW.map(d => `<span>${d}</span>`).join('');
+    let gridHtml = '';
+
+    for (let i = 0; i < startDow; i++) {
+      gridHtml += '<div class="ical-day empty"></div>';
+    }
+
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const ds = _dateStr(_calYear, _calMonth, d);
+      const dow = new Date(_calYear, _calMonth, d).getDay(); // 0=dom
+      const isSun = dow === 0;
+      const isPast = ds <= todayStr;
+      const count = occMap[ds] !== undefined ? occMap[ds] : null;
+      const isFull = count !== null && count >= CAL_MAX;
+      const isSelected = ds === _calSelectedDate;
+      const available = !isSun && !isPast && count !== null && !isFull;
+
+      let cls = 'ical-day';
+      let sub = '';
+      if (isSelected) cls += ' selected';
+      else if (isSun)  { cls += ' closed'; sub = '<span class="ical-sub">Cerrado</span>'; }
+      else if (isPast) cls += ' past';
+      else if (isFull) { cls += ' full'; sub = '<span class="ical-sub">Lleno</span>'; }
+      else if (available) cls += ' available';
+      else cls += ' past';
+
+      const click = available ? `onclick="selectIntakeDate('${ds}')"` : '';
+      gridHtml += `<div class="${cls}" ${click}><span>${d}</span>${sub}</div>`;
+    }
+
+    wrap.innerHTML = `
+      <div class="ical-wrap">
+        <div class="ical-header">
+          <button type="button" class="ical-nav" onclick="icalPrev()">‹</button>
+          <span class="ical-title">${MONTH_NAMES[_calMonth]} ${_calYear}</span>
+          <button type="button" class="ical-nav" onclick="icalNext()">›</button>
+        </div>
+        <div class="ical-dow">${dowHtml}</div>
+        <div class="ical-grid">${gridHtml}</div>
+        <div class="ical-info" id="icalInfo">${_calSelectedDate ? formatIntakeDate(_calSelectedDate) : ''}</div>
+      </div>`;
+  }
+
+  function formatIntakeDate(ds) {
+    const spaces = CAL_MAX - (_occupancyMap(_calSlots)[ds] || 0);
+    const d = new Date(ds + 'T12:00:00');
+    const label = d.toLocaleDateString('es-PR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return `✅ ${label} — ${spaces} espacio${spaces !== 1 ? 's' : ''} disponible${spaces !== 1 ? 's' : ''}`;
+  }
+
+  function selectIntakeDate(ds) {
+    _calSelectedDate = ds;
+    document.getElementById('intakeDate').value = ds;
+    markError('intakeDate', false);
+    renderIntakeCal();
+  }
+
+  function icalPrev() {
+    _calMonth--;
+    if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+    renderIntakeCal();
+  }
+
+  function icalNext() {
+    _calMonth++;
+    if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+    renderIntakeCal();
+  }
+
+  async function loadCalendar() {
+    const wrap = document.getElementById('intakeCalWrap');
+    wrap.innerHTML = '<div class="ical-loading">Verificando disponibilidad...</div>';
+    try {
+      _calSlots = await window.loadAvailability();
+      const now = new Date();
+      _calYear  = now.getFullYear();
+      _calMonth = now.getMonth();
+      _calSelectedDate = document.getElementById('intakeDate').value || '';
+      renderIntakeCal();
+    } catch (e) {
+      // Fallback: mostrar input de fecha original
+      wrap.innerHTML = '<input type="date" id="intakeDateFallback" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:\'Nunito\',sans-serif;font-size:14px;padding:10px 12px;width:100%;" oninput="document.getElementById(\'intakeDate\').value=this.value;markError(\'intakeDate\',!this.value)"/>';
+    }
+  }
 
   async function submitForm() {
     if(!validateStep(6)) return;

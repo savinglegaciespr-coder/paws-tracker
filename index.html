@@ -119,13 +119,14 @@
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const tryRender = () => {
-        if (window.renderStudents && document.getElementById('studentTable')) { 
-          window.renderStudents(); 
-        } else { 
-          setTimeout(tryRender, 200); 
+        if (window.renderStudents && document.getElementById('studentTable')) {
+          window.renderStudents();
+        } else {
+          setTimeout(tryRender, 200);
         }
       };
       tryRender();
+      if (perms.students) syncAvailability().catch(() => {});
     });
 
     unsubLogs = onSnapshot(query(collection(db, 'logs'), orderBy('createdAt', 'desc')), (snap) => {
@@ -153,6 +154,13 @@
   }
 
   // ── FIRESTORE CRUD ─────────────────────────────────
+  async function syncAvailability() {
+    const slots = students
+      .filter(s => s.status !== 'completado')
+      .map(s => ({ intake: s.intake || '', date: s.date || '' }));
+    await setDoc(doc(db, 'public', 'availability'), { slots });
+  }
+
   async function addStudent(data) {
     await addDoc(collection(db, 'students'), { ...data, createdAt: serverTimestamp() });
   }
@@ -258,6 +266,7 @@
       createdAt: serverTimestamp()
     });
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'aprobado' });
+    syncAvailability().catch(() => {});
   }
   async function rejectIntake(intakeId) {
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
