@@ -789,12 +789,18 @@
   <!-- SOLICITUDES -->
   <div class="panel" id="panel-solicitudes">
     <div style="max-width:680px;margin:0 auto;padding:0 4px;box-sizing:border-box;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
       <div>
         <div class="section-title" style="margin-bottom:4px;">📥 Solicitudes de Inscripción</div>
         <div style="font-size:12px;color:var(--muted);">Formularios enviados por clientes pendientes de aprobación</div>
       </div>
-      <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);" onclick="loadIntakes()">🔄 Actualizar</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);" onclick="loadIntakes()">🔄 Actualizar</button>
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--red);color:var(--red);" onclick="confirmClearHistory()">🧹 Limpiar historial</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <input type="text" id="intakeSearch" placeholder="🔍 Buscar por nombre o fecha (ej: Rex, 2024-03)" oninput="filterIntakesDisplay()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;padding:9px 14px;box-sizing:border-box;outline:none;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" />
     </div>
     <div id="intakesList"><p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">Cargando solicitudes...</p></div>
     </div>
@@ -1640,21 +1646,22 @@ function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} rend
 function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 window.renderCalendar = renderCalendar;
 
+
 // ── INTAKES ─────────────────────────────────────────────
+let _allIntakes = [];
+
 async function loadIntakes() {
   const list = document.getElementById('intakesList');
   list.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">Cargando...</p>';
   try {
     const intakes = await window.FB.getIntakes();
-    const pending  = intakes.filter(i => i.status === 'pendiente');
-    const approved = intakes.filter(i => i.status === 'aprobado');
-    const rejected = intakes.filter(i => i.status === 'rechazado');
-    const others   = [...approved, ...rejected];
+    _allIntakes = intakes;
 
-    // Update badge
+    // Update badge (siempre basado en el total real, no en el filtro)
     const badge = document.getElementById('intakeBadge');
     if (badge) {
-      if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = 'inline'; }
+      const pendingCount = intakes.filter(i => i.status === 'pendiente').length;
+      if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'inline'; }
       else { badge.style.display = 'none'; }
     }
 
@@ -1663,13 +1670,38 @@ async function loadIntakes() {
       return;
     }
 
-    const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const statusColor = { pendiente:'var(--yellow)', aprobado:'var(--green)', rechazado:'var(--red)' };
-    const statusLabel = { pendiente:'Pendiente', aprobado:'Aprobado', rechazado:'Rechazado' };
+    const searchVal = (document.getElementById('intakeSearch')?.value || '').trim().toLowerCase();
+    const filtered = searchVal ? intakes.filter(i =>
+      (i.dogName||'').toLowerCase().includes(searchVal) ||
+      (i.ownerName||'').toLowerCase().includes(searchVal) ||
+      (i.intakeDate||'').includes(searchVal)
+    ) : intakes;
 
-    const renderIntake = (intake) => {
-      const isPending = intake.status === 'pendiente';
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;">
+    _renderIntakes(list, filtered);
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;padding:40px;">Error al cargar. Intenta de nuevo.</p>';
+  }
+}
+
+function _renderIntakes(list, intakesToRender) {
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const statusColor = { pendiente:'var(--yellow)', aprobado:'var(--green)', rechazado:'var(--red)' };
+  const statusLabel = { pendiente:'Pendiente', aprobado:'Aprobado', rechazado:'Rechazado' };
+
+  const pending  = intakesToRender.filter(i => i.status === 'pendiente');
+  const approved = intakesToRender.filter(i => i.status === 'aprobado');
+  const rejected = intakesToRender.filter(i => i.status === 'rechazado');
+  const others   = [...approved, ...rejected];
+
+  if (intakesToRender.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">No se encontraron resultados.</p>';
+    return;
+  }
+
+  const renderIntake = (intake) => {
+    const isPending = intake.status === 'pendiente';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;">
         <div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
             <div style="font-size:14px;font-weight:800;color:var(--text);">${intake.dogName}</div>
@@ -1724,18 +1756,42 @@ async function loadIntakes() {
           <button data-id="${intake.id}" class="btn-delete-intake" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;">🗑️ Eliminar solicitud rechazada</button>
         </div>` : ''}
       </div>`;
-    };
+  };
 
-    list.innerHTML = (pending.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:10px;">⏳ Pendientes ('+pending.length+')</div>' + pending.map(renderIntake).join('') : '') +
-      (others.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin:16px 0 10px;">Procesadas</div>' + others.map(renderIntake).join('') : '');
+  list.innerHTML = (pending.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700;margin-bottom:10px;">⏳ Pendientes ('+pending.length+')</div>' + pending.map(renderIntake).join('') : '') +
+    (others.length ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin:16px 0 10px;">Procesadas</div>' + others.map(renderIntake).join('') : '');
 
-    // Event delegation for delete buttons
-    list.querySelectorAll('.btn-delete-intake').forEach(btn => {
-      btn.addEventListener('click', () => confirmDelete(btn.dataset.id));
-    });
+  // Event delegation for delete buttons
+  list.querySelectorAll('.btn-delete-intake').forEach(btn => {
+    btn.addEventListener('click', () => confirmDelete(btn.dataset.id));
+  });
+}
+
+function filterIntakesDisplay() {
+  const list = document.getElementById('intakesList');
+  if (!_allIntakes.length) return;
+  const searchVal = (document.getElementById('intakeSearch')?.value || '').trim().toLowerCase();
+  const filtered = searchVal ? _allIntakes.filter(i =>
+    (i.dogName||'').toLowerCase().includes(searchVal) ||
+    (i.ownerName||'').toLowerCase().includes(searchVal) ||
+    (i.intakeDate||'').includes(searchVal)
+  ) : _allIntakes;
+  _renderIntakes(list, filtered);
+}
+
+async function confirmClearHistory() {
+  const processed = _allIntakes.filter(i => i.status === 'aprobado' || i.status === 'rechazado');
+  if (processed.length === 0) { flash('No hay solicitudes procesadas para limpiar.'); return; }
+  if (!confirm('¿Limpiar ' + processed.length + ' solicitud(es) procesada(s)? Solo se eliminan las aprobadas y rechazadas. No se puede deshacer.')) return;
+  try {
+    for (const intake of processed) {
+      await window.FB.deleteIntake(intake.id);
+    }
+    flash('✅ ' + processed.length + ' solicitud(es) eliminada(s).');
+    loadIntakes();
   } catch(e) {
     console.error(e);
-    list.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;padding:40px;">Error al cargar. Intenta de nuevo.</p>';
+    flash('Error al limpiar historial.');
   }
 }
 
