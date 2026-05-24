@@ -341,6 +341,10 @@
   @media(min-width:600px){ main { padding: 28px; } }
   .panel { display: none; }
   .panel.active { display: block; }
+  @keyframes slideFromRight { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:translateX(0); } }
+  @keyframes slideFromLeft  { from { opacity:0; transform:translateX(-28px); } to { opacity:1; transform:translateX(0); } }
+  .panel.slide-right { animation: slideFromRight .22s ease-out; }
+  .panel.slide-left  { animation: slideFromLeft  .22s ease-out; }
 
   .add-bar {
     background: var(--surface); border: 1px solid var(--border);
@@ -1832,9 +1836,14 @@ async function confirmDelete(id) {
 window.loadIntakes = loadIntakes;
 
 function switchTab(el,name){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const allTabs  = [...document.querySelectorAll('.tab')];
+  const fromIdx  = allTabs.indexOf(document.querySelector('.tab.active'));
+  const toIdx    = allTabs.indexOf(el);
+  const dir      = toIdx > fromIdx ? 'slide-right' : 'slide-left';
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active','slide-right','slide-left'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('panel-'+name).classList.add('active');
+  const panel = document.getElementById('panel-'+name);
+  panel.classList.add('active', dir);
   el.classList.add('active');
   if(name==='calendario') renderCalendar();
   if(name==='solicitudes') loadIntakes();
