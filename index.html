@@ -1056,6 +1056,18 @@ function calcAge(dob){
   return years + 'a ' + months + 'm';
 }
 
+// ── COUNT NON-SUNDAY DAYS SINCE INTAKE (intake day excluded) ──
+function countDaysIn(intakeStr){
+  if(!intakeStr) return null;
+  let d = new Date(intakeStr+'T12:00:00');
+  const now = new Date(); now.setHours(12,0,0,0);
+  if(d >= now) return 0;
+  let count = 0;
+  d.setDate(d.getDate()+1);
+  while(d <= now){ if(d.getDay()!==0) count++; d.setDate(d.getDate()+1); }
+  return count;
+}
+
 // ── CALCULATE EXIT DATE (6-day weeks, skip Sundays) ──────────
 function calcExitDate(intakeId, weeksId, dateId){
   const intakeVal = document.getElementById(intakeId).value;
@@ -1392,10 +1404,8 @@ function runExportPDF(){
   const statusLabel = {activo:'Activo',salida_hoy:'Salida hoy',completado:'Completado',pendiente:'Pendiente'};
   const actLabel = {caminata:'Caminata estructurada',piso:'Entrenamiento de piso'};
   const daysIn = s => {
-    if(!s.intake) return '—';
-    const now = new Date(); now.setHours(12,0,0,0);
-    const diff = Math.floor((now - new Date(s.intake+'T12:00:00'))/(1000*60*60*24));
-    return (diff < 0 ? 0 : diff)+'d';
+    const d = countDaysIn(s.intake);
+    return d === null ? '—' : d+'d';
   };
 
   const pageW = doc.internal.pageSize.getWidth();
@@ -1506,7 +1516,7 @@ function openDogReport(id){
   const actLabel = {caminata:'🚶 Caminata estructurada',piso:'🏋️ Entrenamiento de piso'};
   const dogLogs = logs.filter(l=>l.dog===s.name).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  const daysIn = s.intake ? Math.floor((new Date()-new Date(s.intake+'T12:00:00'))/(1000*60*60*24)) : null;
+  const daysIn = countDaysIn(s.intake);
   const caminatas = dogLogs.filter(l=>(l.types||[l.type]).includes('caminata')).length;
   const pisos     = dogLogs.filter(l=>(l.types||[l.type]).includes('piso')).length;
 
@@ -1555,7 +1565,7 @@ function exportDogReport(){
   const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
   const actLabel = {caminata:'Caminata estructurada',piso:'Entrenamiento de piso'};
   const dogLogs = logs.filter(l=>l.dog===s.name).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const daysIn = s.intake ? Math.floor((new Date()-new Date(s.intake+'T12:00:00'))/(1000*60*60*24)) : '—';
+  const daysIn = countDaysIn(s.intake) ?? '—';
   const caminatas = dogLogs.filter(l=>(l.types||[l.type]).includes('caminata')).length;
   const pisos     = dogLogs.filter(l=>(l.types||[l.type]).includes('piso')).length;
 
