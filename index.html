@@ -336,6 +336,7 @@
     background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 0 28px; display: flex; gap: 4px;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain; touch-action: pan-x;
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
@@ -1963,15 +1964,17 @@ window.updateUserRole = updateUserRole;
 
 // ── SWIPE NAV ─────────────────────────────────────────
 (function(){
-  let sx = 0, sy = 0;
+  let sx = 0, sy = 0, startedInScrollable = false;
   const main = document.querySelector('main');
 
   main.addEventListener('touchstart', e => {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
+    startedInScrollable = !!e.target.closest('.table-wrap');
   }, { passive: true });
 
   main.addEventListener('touchend', e => {
+    if (startedInScrollable) return;
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
     // Ignorar si el movimiento es más vertical que horizontal o menor a 50px
