@@ -241,13 +241,19 @@
   // ── EXPOSE TO GLOBAL SCOPE ─────────────────────────
   // ── EMAIL HELPERS ─────────────────────────────────────────────
   async function getBiz() {
-    const snap = await getDoc(doc(db, 'config', 'business'));
-    const d = snap.exists() ? snap.data() : {};
-    return {
-      businessName: d.businessName || 'Paws Training',
-      ownerEmail:   d.ownerEmail   || 'pawstraningpr@gmail.com',
-      phone:        d.phone        || '787-245-7292'
-    };
+    let businessName = 'Paws Training';
+    let ownerEmail   = 'pawstraningpr@gmail.com';
+    let phone        = '787-245-7292';
+    try {
+      const snap = await getDoc(doc(db, 'config', 'business'));
+      if (snap.exists()) {
+        const d = snap.data();
+        businessName = d.businessName || businessName;
+        ownerEmail   = d.ownerEmail   || ownerEmail;
+        phone        = d.phone        || phone;
+      }
+    } catch(e) { console.warn('Config read failed (using defaults):', e.code, e.message); }
+    return { businessName, ownerEmail, phone };
   }
   function fmtDateES(ds) {
     if (!ds) return '—';
@@ -287,15 +293,18 @@
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'aprobado' });
     syncAvailability().catch(() => {});
     if (intakeData.email) {
-      getBiz().then(biz => sendMail(
-        intakeData.email, biz.ownerEmail,
-        `${biz.businessName} — ¡Tu solicitud ha sido confirmada!`,
-        `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
-         <p>Nos complace informarte que la solicitud de ingreso para <strong>${intakeData.dogName}</strong> ha sido <strong>confirmada</strong>.</p>
-         <p>Deberás entregar tu mascota el día <strong>${fmtDateES(intakeData.intakeDate)}</strong>.</p>
-         <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
-         <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
-      )).catch(e => console.error('Email aprobado:', e));
+      const biz = await getBiz();
+      try {
+        await sendMail(
+          intakeData.email, biz.ownerEmail,
+          `${biz.businessName} — ¡Tu solicitud ha sido confirmada!`,
+          `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
+           <p>Nos complace informarte que la solicitud de ingreso para <strong>${intakeData.dogName}</strong> ha sido <strong>confirmada</strong>.</p>
+           <p>Deberás entregar tu mascota el día <strong>${fmtDateES(intakeData.intakeDate)}</strong>.</p>
+           <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+           <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
+        );
+      } catch(e) { console.error('Email aprobado FALLÓ:', e.code, e.message, e); }
     }
   }
   async function rejectIntake(intakeId) {
@@ -303,14 +312,17 @@
     const intakeData = intakeSnap.exists() ? intakeSnap.data() : null;
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
     if (intakeData && intakeData.email) {
-      getBiz().then(biz => sendMail(
-        intakeData.email, biz.ownerEmail,
-        `${biz.businessName} — Actualización sobre tu solicitud`,
-        `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
-         <p>Lamentamos informarte que en este momento no podemos acomodar la solicitud de ingreso para <strong>${intakeData.dogName}</strong>.</p>
-         <p>Si tienes alguna pregunta o deseas más información, no dudes en contactarnos.</p>
-         <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
-      )).catch(e => console.error('Email rechazado:', e));
+      const biz = await getBiz();
+      try {
+        await sendMail(
+          intakeData.email, biz.ownerEmail,
+          `${biz.businessName} — Actualización sobre tu solicitud`,
+          `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
+           <p>Lamentamos informarte que en este momento no podemos acomodar la solicitud de ingreso para <strong>${intakeData.dogName}</strong>.</p>
+           <p>Si tienes alguna pregunta o deseas más información, no dudes en contactarnos.</p>
+           <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
+        );
+      } catch(e) { console.error('Email rechazado FALLÓ:', e.code, e.message, e); }
     }
   }
   async function deleteIntake(intakeId) {
