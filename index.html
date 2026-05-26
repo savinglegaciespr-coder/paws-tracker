@@ -310,11 +310,9 @@
   async function rejectIntake(intakeId) {
     const intakeSnap = await getDoc(doc(db, 'intakes', intakeId));
     const intakeData = intakeSnap.exists() ? intakeSnap.data() : null;
-    console.log('[reject] intakeId:', intakeId, '| email:', intakeData?.email, '| exists:', intakeSnap.exists());
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
     if (intakeData && intakeData.email) {
       const biz = await getBiz();
-      console.log('[reject] biz:', JSON.stringify(biz));
       try {
         await sendMail(
           intakeData.email, biz.ownerEmail,
@@ -324,10 +322,7 @@
            <p>Si tienes alguna pregunta o deseas más información, no dudes en contactarnos.</p>
            <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
         );
-        console.log('[reject] mail document created OK');
-      } catch(e) { console.error('[reject] sendMail FALLÓ:', e.code, e.message, e); }
-    } else {
-      console.warn('[reject] sin email — intakeData nulo o email vacío');
+      } catch(e) { console.error('Email rechazado FALLÓ:', e.code, e.message, e); }
     }
   }
   async function deleteIntake(intakeId) {
