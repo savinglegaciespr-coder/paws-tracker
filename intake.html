@@ -446,6 +446,45 @@
     await addDoc(collection(db, 'intakes'), {
       ...data, status: 'pendiente', createdAt: serverTimestamp()
     });
+    try {
+      const bizSnap = await getDoc(doc(db, 'config', 'business'));
+      const biz = bizSnap.exists() ? bizSnap.data() : {};
+      const businessName = biz.businessName || 'Paws Training';
+      const ownerEmail   = biz.ownerEmail   || 'pawstraningpr@gmail.com';
+      const phone        = biz.phone        || '787-245-7292';
+      const fmtDate = ds => ds ? new Date(ds+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—';
+
+      // Email al cliente — confirmación de recibo
+      await addDoc(collection(db, 'mail'), {
+        to: data.email,
+        replyTo: ownerEmail,
+        message: {
+          subject: `${businessName} — Solicitud recibida para ${data.dogName}`,
+          html: `<p>Estimado/a <strong>${data.ownerName}</strong>,</p>
+                 <p>Hemos recibido tu solicitud de ingreso para <strong>${data.dogName}</strong> con fecha deseada el <strong>${fmtDate(data.intakeDate)}</strong>.</p>
+                 <p>Te estaremos contactando antes de <strong>24 horas</strong> para confirmar disponibilidad.</p>
+                 <br/><p><strong>${businessName}</strong><br/>📞 ${phone}</p>`
+        }
+      });
+
+      // Email al negocio — datos completos de la solicitud
+      await addDoc(collection(db, 'mail'), {
+        to: ownerEmail,
+        message: {
+          subject: `Nueva solicitud: ${data.dogName} (${data.ownerName})`,
+          html: `<h2>Nueva solicitud de ingreso</h2>
+                 <p><strong>Dueño:</strong> ${data.ownerName}</p>
+                 <p><strong>Teléfono:</strong> ${data.phone1}${data.phone2 ? ' / '+data.phone2 : ''}</p>
+                 <p><strong>Email:</strong> ${data.email}</p>
+                 <p><strong>Perro:</strong> ${data.dogName} (${data.breed})</p>
+                 <p><strong>Fecha de ingreso deseada:</strong> ${fmtDate(data.intakeDate)}</p>
+                 <p><strong>Semanas:</strong> ${data.weeks}</p>
+                 ${data.allergies ? `<p><strong>Alergias:</strong> ${data.allergies}</p>` : ''}
+                 ${data.medications ? `<p><strong>Medicamentos:</strong> ${data.medications}</p>` : ''}
+                 ${data.extraNotes ? `<p><strong>Notas adicionales:</strong> ${data.extraNotes}</p>` : ''}`
+        }
+      });
+    } catch(e) { console.error('Email intake:', e); }
   };
 
   window.loadAvailability = async () => {

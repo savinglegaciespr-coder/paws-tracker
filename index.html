@@ -22,7 +22,7 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, collection, doc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyB6RqpTZ81SyOc5nF0shEw_t7MKFSl0BhI",
@@ -239,6 +239,24 @@
   }
 
   // ── EXPOSE TO GLOBAL SCOPE ─────────────────────────
+  // ── EMAIL HELPERS ─────────────────────────────────────────────
+  async function getBiz() {
+    const snap = await getDoc(doc(db, 'config', 'business'));
+    const d = snap.exists() ? snap.data() : {};
+    return {
+      businessName: d.businessName || 'Paws Training',
+      ownerEmail:   d.ownerEmail   || 'pawstraningpr@gmail.com',
+      phone:        d.phone        || '787-245-7292'
+    };
+  }
+  function fmtDateES(ds) {
+    if (!ds) return '—';
+    return new Date(ds + 'T12:00:00').toLocaleDateString('es-PR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  async function sendMail(to, replyTo, subject, html) {
+    await addDoc(collection(db, 'mail'), { to, replyTo, message: { subject, html } });
+  }
+
   // ── INTAKES ───────────────────────────────────────────────────
   async function getIntakes() {
     const snap = await getDocs(query(collection(db, 'intakes'), orderBy('createdAt', 'desc')));
@@ -268,9 +286,32 @@
     });
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'aprobado' });
     syncAvailability().catch(() => {});
+    if (intakeData.email) {
+      getBiz().then(biz => sendMail(
+        intakeData.email, biz.ownerEmail,
+        `${biz.businessName} — ¡Tu solicitud ha sido confirmada!`,
+        `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
+         <p>Nos complace informarte que la solicitud de ingreso para <strong>${intakeData.dogName}</strong> ha sido <strong>confirmada</strong>.</p>
+         <p>Deberás entregar tu mascota el día <strong>${fmtDateES(intakeData.intakeDate)}</strong>.</p>
+         <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+         <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
+      )).catch(e => console.error('Email aprobado:', e));
+    }
   }
   async function rejectIntake(intakeId) {
+    const intakeSnap = await getDoc(doc(db, 'intakes', intakeId));
+    const intakeData = intakeSnap.exists() ? intakeSnap.data() : null;
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
+    if (intakeData && intakeData.email) {
+      getBiz().then(biz => sendMail(
+        intakeData.email, biz.ownerEmail,
+        `${biz.businessName} — Actualización sobre tu solicitud`,
+        `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
+         <p>Lamentamos informarte que en este momento no podemos acomodar la solicitud de ingreso para <strong>${intakeData.dogName}</strong>.</p>
+         <p>Si tienes alguna pregunta o deseas más información, no dudes en contactarnos.</p>
+         <br/><p><strong>${biz.businessName}</strong><br/>📞 ${biz.phone}</p>`
+      )).catch(e => console.error('Email rechazado:', e));
+    }
   }
   async function deleteIntake(intakeId) {
     await deleteDoc(doc(db, 'intakes', intakeId));
