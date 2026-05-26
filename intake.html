@@ -446,15 +446,27 @@
     await addDoc(collection(db, 'intakes'), {
       ...data, status: 'pendiente', createdAt: serverTimestamp()
     });
+
+    // Read business config — failures use hardcoded defaults so mail still sends
+    let businessName = 'Paws Training';
+    let ownerEmail   = 'pawstraningpr@gmail.com';
+    let phone        = '787-245-7292';
     try {
       const bizSnap = await getDoc(doc(db, 'config', 'business'));
-      const biz = bizSnap.exists() ? bizSnap.data() : {};
-      const businessName = biz.businessName || 'Paws Training';
-      const ownerEmail   = biz.ownerEmail   || 'pawstraningpr@gmail.com';
-      const phone        = biz.phone        || '787-245-7292';
-      const fmtDate = ds => ds ? new Date(ds+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—';
+      if (bizSnap.exists()) {
+        const biz = bizSnap.data();
+        businessName = biz.businessName || businessName;
+        ownerEmail   = biz.ownerEmail   || ownerEmail;
+        phone        = biz.phone        || phone;
+      }
+    } catch(configErr) {
+      console.warn('Config read failed (using defaults):', configErr.code, configErr.message);
+    }
 
-      // Email al cliente — confirmación de recibo
+    const fmtDate = ds => ds ? new Date(ds+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—';
+
+    // Email al cliente — confirmación de recibo
+    try {
       await addDoc(collection(db, 'mail'), {
         to: data.email,
         replyTo: ownerEmail,
@@ -466,8 +478,10 @@
                  <br/><p><strong>${businessName}</strong><br/>📞 ${phone}</p>`
         }
       });
+    } catch(e) { console.error('Email cliente FALLÓ:', e.code, e.message, e); }
 
-      // Email al negocio — datos completos de la solicitud
+    // Email al negocio — datos completos de la solicitud
+    try {
       await addDoc(collection(db, 'mail'), {
         to: ownerEmail,
         message: {
@@ -484,7 +498,7 @@
                  ${data.extraNotes ? `<p><strong>Notas adicionales:</strong> ${data.extraNotes}</p>` : ''}`
         }
       });
-    } catch(e) { console.error('Email intake:', e); }
+    } catch(e) { console.error('Email negocio FALLÓ:', e.code, e.message, e); }
   };
 
   window.loadAvailability = async () => {
