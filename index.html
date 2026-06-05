@@ -276,6 +276,16 @@
   }
 
   // ── INTAKES ───────────────────────────────────────────────────
+  function calcExitFromIntake(intakeDateStr, weeks) {
+    const w = parseInt(weeks);
+    if (!intakeDateStr || !w || w < 1) return '';
+    let days = w * 6;
+    let d = new Date(intakeDateStr + 'T12:00:00');
+    let added = 0;
+    while (added < days) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0) added++; }
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
   async function getIntakes() {
     const snap = await getDocs(query(collection(db, 'intakes'), orderBy('createdAt', 'desc')));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -285,7 +295,7 @@
       name: intakeData.dogName,
       dob: intakeData.dob || '',
       intake: intakeData.intakeDate || '',
-      date: '',
+      date: calcExitFromIntake(intakeData.intakeDate, intakeData.weeks),
       time: '',
       status: 'pendiente',
       obs: [
