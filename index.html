@@ -797,11 +797,14 @@
     </div>
 
     <div class="table-wrap">
+      <div style="margin-bottom:12px;">
+        <input type="text" id="searchDog" placeholder="🔍 Buscar por nombre..." oninput="renderStudents()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;padding:9px 14px;width:100%;box-sizing:border-box;"/>
+      </div>
       <table>
         <thead><tr><th>#</th><th>Nombre</th><th>Fecha ingreso</th><th>Días</th><th>Fecha salida</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="studentTable"></tbody>
       </table>
-      <div class="empty" id="emptyMsg" style="display:none;"><div class="empty-icon">🐶</div><p>No hay estudiantes registrados.</p></div>
+      <div class="empty" id="emptyMsg" style="display:none;"><div class="empty-icon">🐶</div><p id="emptyMsgText">No hay estudiantes registrados.</p></div>
     </div>
   </div>
 
@@ -1040,6 +1043,7 @@ function renderStudents(){
   const tbody=document.getElementById('studentTable');
   const empty=document.getElementById('emptyMsg');
   if(!tbody) return;
+  const searchTerm=(document.getElementById('searchDog')?.value||'').trim().toLowerCase();
   if(document.getElementById('totalCount')) document.getElementById('totalCount').textContent=students.length+' PERRO'+(students.length!==1?'S':'');
   // Use local date to avoid UTC timezone offset issues (PR is UTC-4)
   const _now = new Date();
@@ -1054,7 +1058,7 @@ function renderStudents(){
     <div class="stat-card"><div class="stat-label">Salen hoy</div><div class="stat-value yellow">${sh}</div></div>
     <div class="stat-card"><div class="stat-label">Completados</div><div class="stat-value">${done}</div></div>
     <div class="stat-card"><div class="stat-label">Actividades</div><div class="stat-value green">${(window.getLogs()||[]).length}</div></div>`;
-  if(!students.length){ tbody.innerHTML=''; empty.style.display='block'; updateDogSelects(); return; }
+  if(!students.length){ tbody.innerHTML=''; document.getElementById('emptyMsgText').textContent='No hay estudiantes registrados.'; empty.style.display='block'; updateDogSelects(); return; }
   empty.style.display='none';
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
   const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
@@ -1080,7 +1084,11 @@ function renderStudents(){
     const order = { activo: 0, pendiente: 1 };
     return (order[a.status] ?? 0) - (order[b.status] ?? 0);
   });
-  tbody.innerHTML=sorted.map((s,i)=>{
+  const display = searchTerm ? sorted.filter(s => s.name.toLowerCase().includes(searchTerm)) : sorted;
+  if(!display.length){ tbody.innerHTML=''; document.getElementById('emptyMsgText').textContent='No se encontraron perros con ese nombre.'; empty.style.display='block'; return; }
+  empty.style.display='none';
+  if(document.getElementById('totalCount')) document.getElementById('totalCount').textContent=display.length+' PERRO'+(display.length!==1?'S':'');
+  tbody.innerHTML=display.map((s,i)=>{
     // Days counter — color based on proximity to exit date
     let daysBadge = '<span style="color:var(--muted)">—</span>';
     if(s.intake){
