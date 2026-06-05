@@ -1886,6 +1886,7 @@ function _renderIntakes(list, intakesToRender) {
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
           <div style="font-size:11px;color:var(--muted);">${esc(intake.phone1||'')} · ${esc(intake.email||'')}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Recibido: ${intake.createdAt?.toDate ? intake.createdAt.toDate().toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + ' · ' + intake.createdAt.toDate().toLocaleTimeString('es-PR',{hour:'numeric',minute:'2-digit',hour12:true}) : '—'}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:4px;margin-bottom:8px;">
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
