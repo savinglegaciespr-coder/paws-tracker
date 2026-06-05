@@ -42,11 +42,11 @@
 
   // ── ROLE PERMISSIONS ───────────────────────────────
   const PERMISSIONS = {
-    superadmin:   { students: true,  logs: true,  export: true,  delete: true,  users: true  },
-    businessowner:{ students: true,  logs: true,  export: true,  delete: true,  users: true  },
-    admin:        { students: true,  logs: true,  export: true,  delete: true,  users: false },
-    trainer:      { students: false, logs: true,  export: false, delete: false, users: false },
-    operator:     { students: true,  logs: false, export: false, delete: false, users: false },
+    superadmin:   { students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true  },
+    businessowner:{ students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true  },
+    admin:        { students: true,  studentsEdit: true,  logs: false, export: true,  delete: false, users: false },
+    trainer:      { students: false, studentsEdit: false, logs: true,  export: false, delete: false, users: false },
+    operator:     { students: true,  studentsEdit: false, logs: false, export: false, delete: false, users: false },
   };
 
   let currentUser = null;
@@ -89,6 +89,9 @@
         if (data.role === 'superadmin') {
           // Superadmin always has access
           currentRole = 'superadmin';
+        } else if (data.role === 'banned') {
+          showBanned();
+          return;
         } else if (!data.active || data.role === 'pending') {
           showPending();
           return;
@@ -190,16 +193,25 @@
   function showLogin() {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('pendingScreen').style.display = 'none';
+    document.getElementById('bannedScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'none';
   }
   function showPending() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('pendingScreen').style.display = 'flex';
+    document.getElementById('bannedScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'none';
+  }
+  function showBanned() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('pendingScreen').style.display = 'none';
+    document.getElementById('bannedScreen').style.display = 'flex';
     document.getElementById('appScreen').style.display = 'none';
   }
   function showApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('pendingScreen').style.display = 'none';
+    document.getElementById('bannedScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
     // Show/hide elements based on role
     document.querySelectorAll('[data-perm]').forEach(el => {
@@ -700,6 +712,16 @@
     </button>
   </div>
 </div>
+<div id="bannedScreen" class="auth-screen" style="display:none;">
+  <div class="auth-card">
+    <div class="pending-icon">🚫</div>
+    <div class="auth-title" style="font-size:22px;">ACCESO DENEGADO</div>
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 24px;">Tu cuenta ha sido removida del sistema. Contacta al administrador si crees que es un error.</p>
+    <button class="btn-google" onclick="window.FB.logout()">
+      Cerrar sesión
+    </button>
+  </div>
+</div>
 
 <!-- APP SCREEN -->
 <div id="appScreen" style="display:none;">
@@ -729,7 +751,7 @@
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
-  <div class="tab" onclick="switchTab(this,'bitacora')">📋 Bitácora</div>
+  <div class="tab" data-tab="bitacora" onclick="switchTab(this,'bitacora')">📋 Bitácora</div>
   <div class="tab" onclick="switchTab(this,'calendario')">📅 Calendario</div>
   <div class="tab" data-perm="users" onclick="switchTab(this,'solicitudes')" id="tabSolicitudes" style="display:none;">📥 Solicitudes <span id="intakeBadge" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:10px;padding:2px 7px;margin-left:4px;font-weight:800;"></span></div>
 </div>
@@ -755,7 +777,7 @@
       <button class="btn btn-warn" data-perm="delete" onclick="clearCompleted()">🧹 Limpiar completados</button>
     </div>
 
-    <div class="add-bar">
+    <div class="add-bar" data-perm="studentsEdit">
       <h3>➕ Agregar estudiante</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;box-sizing:border-box;width:100%;">
         <div class="field fld-eq"><label>Nombre del perro</label><input type="text" id="newName" placeholder="Ej: Milo 1"/></div>
@@ -1019,8 +1041,12 @@ function renderStudents(){
   const empty=document.getElementById('emptyMsg');
   if(!tbody) return;
   if(document.getElementById('totalCount')) document.getElementById('totalCount').textContent=students.length+' PERRO'+(students.length!==1?'S':'');
+  // Use local date to avoid UTC timezone offset issues (PR is UTC-4)
+  const _now = new Date();
+  const _pad = n => String(n).padStart(2,'0');
+  const todayStr = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
   const a=students.filter(s=>s.status==='activo').length;
-  const sh=students.filter(s=>s.status==='salida_hoy').length;
+  const sh=students.filter(s=>s.date===todayStr).length;
   const done=students.filter(s=>s.status==='completado').length;
   document.getElementById('statsRow').innerHTML=`
     <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${students.length}</div></div>
@@ -1031,28 +1057,28 @@ function renderStudents(){
   if(!students.length){ tbody.innerHTML=''; empty.style.display='block'; updateDogSelects(); return; }
   empty.style.display='none';
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
-  // Use local date to avoid UTC timezone offset issues (PR is UTC-4)
-  const _now = new Date();
-  const _pad = n => String(n).padStart(2,'0');
-  const todayStr = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
   const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
   const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
-  // Sort students: by exit date ascending, then by exit time, completados at bottom, no-date at end
+  // Sort: intake asc → exit date asc → time asc → status (activo < pendiente); completados at bottom unsorted
   const sorted = [...students].sort((a, b) => {
     const isComp = s => s.status === 'completado';
     if (isComp(a) && !isComp(b)) return 1;
     if (!isComp(a) && isComp(b)) return -1;
     if (isComp(a) && isComp(b)) return 0;
-    // Both not completed — sort by exit date
-    if (!a.date && !b.date) return 0;
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-    // Same date — sort by exit time
-    if (!a.time && !b.time) return 0;
-    if (!a.time) return 1;
-    if (!b.time) return -1;
-    return a.time < b.time ? -1 : 1;
+    if (!a.intake && !b.intake) {}
+    else if (!a.intake) return 1;
+    else if (!b.intake) return -1;
+    else if (a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
+    if (!a.date && !b.date) {}
+    else if (!a.date) return 1;
+    else if (!b.date) return -1;
+    else if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (!a.time && !b.time) {}
+    else if (!a.time) return 1;
+    else if (!b.time) return -1;
+    else if (a.time !== b.time) return a.time < b.time ? -1 : 1;
+    const order = { activo: 0, pendiente: 1 };
+    return (order[a.status] ?? 0) - (order[b.status] ?? 0);
   });
   tbody.innerHTML=sorted.map((s,i)=>{
     // Days counter — color based on proximity to exit date
@@ -1091,9 +1117,9 @@ function renderStudents(){
     <td>${s.time?fmtTime(s.time):'<span style="color:var(--muted)">—</span>'}</td>
     <td>${chips[s.status]||''}</td>
     <td><div class="actions">
-      <button class="btn btn-sm btn-edit" onclick="openEdit('${s.id}')">✏️ Editar</button>
+      ${window.getPerms().studentsEdit ? `<button class="btn btn-sm btn-edit" onclick="openEdit('${s.id}')">✏️ Editar</button>` : ''}
       <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--blue);color:var(--blue);" onclick="openDogReport('${s.id}')">📊</button>
-      <button class="btn btn-sm btn-danger" onclick="delStudent('${s.id}')">🗑</button>
+      ${window.getPerms().delete ? `<button class="btn btn-sm btn-danger" onclick="delStudent('${s.id}')">🗑</button>` : ''}
     </div></td>
   </tr>`;}).join('');
   updateDogSelects();
@@ -1315,8 +1341,9 @@ function exportPDF(){
   const fmtT = t => { if(!t)return'--'; const[h,m]=t.split(':').map(Number); return (h%12||12)+':'+(String(m).padStart(2,'0'))+' '+(h>=12?'pm':'am'); };
   const today = new Date().toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
+  const exportStudents = students.filter(s => s.status === 'activo' || s.status === 'pendiente');
   let studentRows = '';
-  students.forEach((s,i) => {
+  exportStudents.forEach((s,i) => {
     const bg = i%2===0 ? '#ffffff' : '#f5f5f5';
     studentRows += '<tr style="background:'+bg+'">'
       + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+(i+1)+'</td>'
@@ -1354,7 +1381,7 @@ function exportPDF(){
   const content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Paws Training Reporte</title></head><body style="font-family:Arial,sans-serif;padding:30px;color:#222;">'
     + '<h1 style="color:#6db33f;font-size:26px;margin-bottom:4px;">PAWS TRAINING</h1>'
     + '<p style="color:#888;font-size:12px;margin-bottom:24px;">by Pet Lovers Sitting &nbsp;&middot;&nbsp; Reporte: '+today+'</p>'
-    + '<h2 style="color:#6db33f;font-size:16px;border-bottom:2px solid #6db33f;padding-bottom:4px;margin:24px 0 12px;">Estudiantes ('+students.length+')</h2>'
+    + '<h2 style="color:#6db33f;font-size:16px;border-bottom:2px solid #6db33f;padding-bottom:4px;margin:24px 0 12px;">Estudiantes ('+exportStudents.length+')</h2>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
     + '<thead><tr>'
     + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">#</th>'
@@ -1401,14 +1428,21 @@ function getExportRange(){
     const isComp = s => s.status === 'completado';
     if(isComp(a) && !isComp(b)) return 1;
     if(!isComp(a) && isComp(b)) return -1;
-    if(!a.date && !b.date) return 0;
-    if(!a.date) return 1;
-    if(!b.date) return -1;
-    if(a.date !== b.date) return a.date < b.date ? -1 : 1;
-    if(!a.time && !b.time) return 0;
-    if(!a.time) return 1;
-    if(!b.time) return -1;
-    return a.time < b.time ? -1 : 1;
+    if(isComp(a) && isComp(b)) return 0;
+    if(!a.intake && !b.intake) {}
+    else if(!a.intake) return 1;
+    else if(!b.intake) return -1;
+    else if(a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
+    if(!a.date && !b.date) {}
+    else if(!a.date) return 1;
+    else if(!b.date) return -1;
+    else if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if(!a.time && !b.time) {}
+    else if(!a.time) return 1;
+    else if(!b.time) return -1;
+    else if(a.time !== b.time) return a.time < b.time ? -1 : 1;
+    const order = { activo: 0, pendiente: 1 };
+    return (order[a.status] ?? 0) - (order[b.status] ?? 0);
   });
   const filtStudents = sortStudents(students.filter(s => {
     const si = s.intake ? new Date(s.intake+'T12:00:00') : null;
@@ -2009,7 +2043,9 @@ async function loadUsers(){
   const users = await window.FB.getUsers();
   const roles = ['superadmin','businessowner','admin','trainer','operator','pending'];
   const roleLabels = {superadmin:'Super Admin',businessowner:'Business Owner',admin:'Admin',trainer:'Entrenador',operator:'Operador',pending:'Pendiente'};
-  document.getElementById('usersList').innerHTML = users.length ? users.map(u => `
+  const active = users.filter(u => u.role !== 'banned');
+  const banned = users.filter(u => u.role === 'banned');
+  const activeHtml = active.length ? active.map(u => `
     <div class="user-row">
       <div class="user-row-name">${esc(u.name||'Sin nombre')}<br><span class="user-row-email">${esc(u.email)}</span></div>
       <select onchange="updateUserRole('${u.id}',this.value,${u.active})" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:12px;">
@@ -2021,15 +2057,34 @@ async function loadUsers(){
         </div>
         <span style="font-size:12px;color:${u.active?'var(--green2)':'var(--muted)'};">${u.active?'Activo':'Inactivo'}</span>
       </label>
+      <button onclick="banUser('${u.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0 4px;" title="Remover del equipo">🗑</button>
     </div>`).join('') : '<p style="color:var(--muted);font-size:13px;">No hay usuarios registrados.</p>';
+  const bannedHtml = banned.length ? `
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <p style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Removidos del equipo</p>
+      ${banned.map(u => `
+        <div class="user-row" style="opacity:0.5;">
+          <div class="user-row-name">${esc(u.name||'Sin nombre')}<br><span class="user-row-email">${esc(u.email)}</span></div>
+          <span style="font-size:12px;color:var(--muted);">Removido</span>
+          <button onclick="updateUserRole('${u.id}','pending',false)" style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text);padding:4px 8px;">Reactivar</button>
+        </div>`).join('')}
+    </div>` : '';
+  document.getElementById('usersList').innerHTML = activeHtml + bannedHtml;
 }
 async function updateUserRole(uid,role,active){
   await window.FB.updateUserRole(uid,role,active);
   flash('Usuario actualizado.');
   setTimeout(loadUsers,500);
 }
+async function banUser(uid){
+  if(!confirm('¿Remover este usuario del equipo? Perderá el acceso permanentemente.')) return;
+  await window.FB.updateUserRole(uid,'banned',false);
+  flash('Usuario removido del equipo.');
+  setTimeout(loadUsers,500);
+}
 window.loadUsers = loadUsers;
 window.updateUserRole = updateUserRole;
+window.banUser = banUser;
 
 // ── SWIPE NAV ─────────────────────────────────────────
 (function(){
