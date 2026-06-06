@@ -293,6 +293,7 @@
   async function approveIntake(intakeId, intakeData) {
     await addDoc(collection(db, 'students'), {
       name: intakeData.dogName,
+      breed: intakeData.breed || '',
       dob: intakeData.dob || '',
       intake: intakeData.intakeDate || '',
       date: calcExitFromIntake(intakeData.intakeDate, intakeData.weeks),
@@ -791,6 +792,7 @@
       <h3>➕ Agregar estudiante</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;box-sizing:border-box;width:100%;">
         <div class="field fld-eq"><label>Nombre del perro</label><input type="text" id="newName" placeholder="Ej: Milo 1"/></div>
+        <div class="field fld-eq"><label>Raza</label><input type="text" id="newBreed" placeholder="Ej: Golden Retriever"/></div>
         <div class="field fld-eq"><label>Fecha de nacimiento</label><input type="date" id="newDob"/></div>
         <div class="field fld-eq"><label>Fecha de ingreso</label><input type="date" id="newIntake" oninput="calcExitDate('newIntake','newWeeks','newDate')"/></div>
         <div class="field fld-eq"><label>Semanas de estadía</label><input type="number" id="newWeeks" min="1" max="52" placeholder="Ej: 2" oninput="calcExitDate('newIntake','newWeeks','newDate')"/></div>
@@ -1005,6 +1007,7 @@
     <h3>✏️ Editar estudiante</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;box-sizing:border-box;width:100%;">
       <div class="field fld-eq" style="grid-column:1/-1;"><label>Nombre del perro</label><input type="text" id="editName"/></div>
+      <div class="field fld-eq" style="grid-column:1/-1;"><label>Raza</label><input type="text" id="editBreed" placeholder="Ej: Golden Retriever"/></div>
       <div class="field fld-eq"><label>Fecha de nacimiento</label><input type="date" id="editDob"/></div>
       <div class="field fld-eq" id="editAgeDisplay" style="display:flex;align-items:flex-end;padding-bottom:10px;font-size:13px;color:var(--muted);"></div>
       <div class="field fld-eq"><label>Fecha de ingreso</label><input type="date" id="editIntake" oninput="calcExitDate('editIntake','editWeeks','editDate')"/></div>
@@ -1126,7 +1129,10 @@ function renderStudents(){
     <td style="color:var(--muted);font-size:12px;">${i+1}</td>
     <td>
       <strong>${esc(s.name)}</strong>${alertBadge}
-      ${calcAge(s.dob) ? `<span style="font-size:10px;color:var(--muted);margin-left:6px;">🐾 ${calcAge(s.dob)}</span>` : ''}
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        ${calcAge(s.dob) ? `<span>🐾 ${calcAge(s.dob)}</span>` : ''}
+        ${s.breed ? `<span>${calcAge(s.dob)?'·':''} ${esc(s.breed)}</span>` : ''}
+      </div>
       ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${esc(s.obs.length>60?s.obs.slice(0,60)+'...':s.obs)}</div>` : ''}
     </td>
     <td>${fmtDate(s.intake)}</td>
@@ -1193,13 +1199,14 @@ async function addStudent(){
   const name=document.getElementById('newName').value.trim();
   if(!name){flash('Ingresa el nombre del perro.');return;}
   try {
-    await window.FB.addStudent({name,dob:document.getElementById('newDob').value,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo',obs:document.getElementById('newObs').value.trim()});
+    await window.FB.addStudent({name,breed:document.getElementById('newBreed').value.trim(),dob:document.getElementById('newDob').value,intake:document.getElementById('newIntake').value,date:document.getElementById('newDate').value,time:document.getElementById('newTime').value,status:'activo',obs:document.getElementById('newObs').value.trim()});
   } catch(err) {
     flash('Error: ' + err.message);
     console.error(err);
     return;
   }
   document.getElementById('newName').value='';
+  document.getElementById('newBreed').value='';
   document.getElementById('newDob').value='';
   document.getElementById('newIntake').value='';
   document.getElementById('newWeeks').value='';
@@ -1215,6 +1222,7 @@ function openEdit(id){
   const s=students.find(x=>x.id===id); if(!s)return;
   editingId=id;
   document.getElementById('editName').value=s.name;
+  document.getElementById('editBreed').value=s.breed||'';
   document.getElementById('editDob').value=s.dob||'';
   document.getElementById('editIntake').value=s.intake||'';
   document.getElementById('editWeeks').value='';
@@ -1232,7 +1240,7 @@ function openEdit(id){
 }
 function closeModal(){ editingId=null; document.getElementById('editModal').classList.remove('open'); }
 function bgClose(e){ if(e.target.id==='editModal')closeModal(); }
-async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),dob:document.getElementById('editDob').value,intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value,obs:document.getElementById('editObs').value.trim()}); closeModal(); flash('Cambios guardados.'); }
+async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),breed:document.getElementById('editBreed').value.trim(),dob:document.getElementById('editDob').value,intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value,obs:document.getElementById('editObs').value.trim()}); closeModal(); flash('Cambios guardados.'); }
 
 function updateDogSelects(){
   const students=window.getStudents()||[];
@@ -1632,6 +1640,11 @@ function openDogReport(id){
   const pisos     = dogLogs.filter(l=>(l.types||[l.type]).includes('piso')).length;
 
   document.getElementById('dogReportTitle').textContent = '📊 '+s.name;
+  const _prevSub = document.getElementById('dogReportSubtitle');
+  if(_prevSub) _prevSub.remove();
+  const _subtitle = [s.breed, calcAge(s.dob)].filter(Boolean).join(' · ');
+  if(_subtitle) document.getElementById('dogReportTitle').insertAdjacentHTML('afterend',
+    `<div id="dogReportSubtitle" style="font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;">${esc(_subtitle)}</div>`);
 
   const logRows = dogLogs.length
     ? dogLogs.map(l=>{
