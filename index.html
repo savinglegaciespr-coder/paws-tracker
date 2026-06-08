@@ -56,6 +56,28 @@
   let logs = [];
   let unsubStudents = null;
   let unsubLogs = null;
+  let unsubIntakes = null;
+  let _knownIntakeIds = null; // null = primera carga, no notificar
+
+  function _updateAppBadge(count) {
+    if (!('setAppBadge' in navigator)) return;
+    if (count > 0) navigator.setAppBadge(count).catch(() => {});
+    else navigator.clearAppBadge().catch(() => {});
+  }
+
+  function _showIntakeNotif(intake) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    new Notification('🐾 Nueva solicitud recibida', {
+      body: (intake.dogName || 'Perro') + (intake.breed ? ' (' + intake.breed + ')' : '') + ' — ' + (intake.ownerName || ''),
+      icon: '/icon-192.png',
+      badge: '/icon-192.png'
+    });
+  }
+
+  async function _requestNotifPermission() {
+    if (!('Notification' in window) || Notification.permission === 'granted' || Notification.permission === 'denied') return;
+    await Notification.requestPermission();
+  }
 
   // ── AUTH STATE ─────────────────────────────────────
   onAuthStateChanged(auth, async (user) => {
@@ -118,6 +140,32 @@
   function setupRealtimeListeners() {
     if (unsubStudents) unsubStudents();
     if (unsubLogs) unsubLogs();
+    if (unsubIntakes) unsubIntakes();
+
+    // Realtime intake listener — only for superadmin/businessowner
+    if (perms.users) {
+      unsubIntakes = onSnapshot(query(collection(db, 'intakes'), orderBy('createdAt', 'desc')), (snap) => {
+        const intakes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const pending = intakes.filter(i => i.status === 'pendiente');
+
+        // Detect new arrivals (skip first load)
+        if (_knownIntakeIds !== null) {
+          pending.forEach(i => {
+            if (!_knownIntakeIds.has(i.id)) _showIntakeNotif(i);
+          });
+        }
+        _knownIntakeIds = new Set(intakes.map(i => i.id));
+
+        // Update app badge
+        _updateAppBadge(pending.length);
+
+        // Update UI badge
+        const badge = document.getElementById('intakeBadge');
+        const tab   = document.getElementById('tabSolicitudes');
+        if (badge) { badge.textContent = pending.length; badge.style.display = pending.length > 0 ? 'inline' : 'none'; }
+        if (tab)   tab.style.display = '';
+      });
+    }
 
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -161,6 +209,9 @@
   async function logout() {
     if (unsubStudents) unsubStudents();
     if (unsubLogs) unsubLogs();
+    if (unsubIntakes) unsubIntakes();
+    _knownIntakeIds = null;
+    _updateAppBadge(0);
     await signOut(auth);
   }
 
@@ -254,20 +305,12 @@
         if (bitTab && window.switchTab) window.switchTab(bitTab, 'bitacora');
       }, 200);
     }
+    // Request notification permission for owners
+    if (perms.users) setTimeout(_requestNotifPermission, 1500);
     // Force render after app is shown
     setTimeout(() => {
       if (window.renderStudents) window.renderStudents();
       if (window.renderLogs) window.renderLogs();
-      // Check pending intakes badge for admins
-      if (perms.users && window.FB) {
-        window.FB.getIntakes().then(intakes => {
-          const pending = intakes.filter(i => i.status === 'pendiente').length;
-          const badge = document.getElementById('intakeBadge');
-          const tab = document.getElementById('tabSolicitudes');
-          if (badge && pending > 0) { badge.textContent = pending; badge.style.display = 'inline'; }
-          if (tab) tab.style.display = '';
-        }).catch(()=>{});
-      }
     }, 300);
   }
 
