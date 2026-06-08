@@ -936,6 +936,7 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);" onclick="loadIntakes()">🔄 Actualizar</button>
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--green);color:var(--green);" onclick="exportIntakesCSV()">📥 Exportar historial</button>
         <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--red);color:var(--red);" onclick="confirmClearHistory()">🧹 Limpiar historial</button>
       </div>
     </div>
@@ -2223,6 +2224,56 @@ function filterIntakesDisplay() {
     (i.intakeDate||'').includes(searchVal)
   ) : _allIntakes;
   _renderIntakes(list, filtered);
+}
+
+function exportIntakesCSV() {
+  if (!_allIntakes || !_allIntakes.length) { flash('No hay solicitudes para exportar. Actualiza primero.'); return; }
+  const statusLabel = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+  const safe = v => '"' + String(v==null?'':v).replace(/"/g,"'") + '"';
+  let csv = 'SOLICITUDES DE INSCRIPCIÓN — Paws Training\n';
+  csv += 'Exportado: ' + new Date().toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + '\n\n';
+  csv += [
+    'Estado','Perro','Raza','Fecha Nacimiento','Dueño','Email','Teléfono',
+    'Fecha Ingreso Solicitada','Semanas','Alergias','Temperamento',
+    'Agresivo con perros','Detalle agresividad perros',
+    'Agresivo con personas','Detalle agresividad personas',
+    'Ha mordido','Detalle mordida','Medicamentos',
+    'Alimento','Horario comida','Fecha Recibido'
+  ].map(safe).join(',') + '\n';
+  _allIntakes.forEach(i => {
+    const recibido = i.createdAt?.toDate ? i.createdAt.toDate().toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+    csv += [
+      statusLabel[i.status] || i.status,
+      i.dogName || '',
+      i.breed || '',
+      i.dob || '',
+      i.ownerName || '',
+      i.email || '',
+      i.phone1 || '',
+      i.intakeDate || '',
+      i.weeks || '',
+      i.allergies || '',
+      i.temperament || '',
+      i.aggrDogs || '',
+      i.aggrDogsDetail || '',
+      i.aggrPeople || '',
+      i.aggrPeopleDetail || '',
+      i.bitten || '',
+      i.bittenDetail || '',
+      i.medications || '',
+      i.food || '',
+      i.feedingSchedule || '',
+      recibido
+    ].map(safe).join(',') + '\n';
+  });
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'solicitudes-paws-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  flash('✅ ' + _allIntakes.length + ' solicitud(es) exportadas.');
 }
 
 async function confirmClearHistory() {
