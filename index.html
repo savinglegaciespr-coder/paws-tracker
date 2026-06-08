@@ -121,6 +121,14 @@
 
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Auto-transition pendiente → activo when intake date has arrived
+      const _n = new Date(), _p = n => String(n).padStart(2,'0');
+      const _today = _n.getFullYear()+'-'+_p(_n.getMonth()+1)+'-'+_p(_n.getDate());
+      students.forEach(s => {
+        if (s.status === 'pendiente' && s.intake && s.intake <= _today) {
+          updateStudent(s.id, { status: 'activo' }).catch(() => {});
+        }
+      });
       const tryRender = () => {
         if (window.renderStudents && document.getElementById('studentTable')) {
           window.renderStudents();
@@ -176,6 +184,9 @@
   async function addLog(data) {
     await addDoc(collection(db, 'logs'), { ...data, createdAt: serverTimestamp() });
   }
+  async function updateLog(id, data) {
+    await updateDoc(doc(db, 'logs', id), data);
+  }
   async function deleteLog(id) {
     await deleteDoc(doc(db, 'logs', id));
   }
@@ -228,10 +239,20 @@
     } else {
       avatarEl.textContent = (currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
     }
-    // Hide bitacora tab for operators
+    // Hide bitacora tab for non-logs roles
     if (!perms.logs) {
       const bitTab = document.querySelector('[data-tab="bitacora"]');
       if(bitTab) bitTab.style.display = 'none';
+    }
+    // Trainer: show only bitácora tab and redirect there
+    if (currentRole === 'trainer') {
+      document.querySelectorAll('.tab').forEach(t => {
+        if (t.dataset.tab !== 'bitacora') t.style.display = 'none';
+      });
+      setTimeout(() => {
+        const bitTab = document.querySelector('[data-tab="bitacora"]');
+        if (bitTab && window.switchTab) window.switchTab(bitTab, 'bitacora');
+      }, 200);
     }
     // Force render after app is shown
     setTimeout(() => {
@@ -359,7 +380,7 @@
     await deleteDoc(doc(db, 'intakes', intakeId));
   }
 
-  window.FB = { addStudent, updateStudent, deleteStudent, addLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake, deleteIntake };
+  window.FB = { addStudent, updateStudent, deleteStudent, addLog, updateLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake, deleteIntake };
   window.getStudents = () => students;
   window.getLogs = () => logs;
   window.getCurrentUser = () => currentUser;
@@ -545,6 +566,10 @@
   .log-notes { font-size: 13px; color: #c0bdb8; margin-top: 5px; font-style: italic; }
   .log-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 15px; padding: 3px 5px; border-radius: 4px; transition: all .15s; }
   .log-del:hover { color: var(--red); background: #e05c5c18; }
+  .log-edit { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 15px; padding: 3px 5px; border-radius: 4px; transition: all .15s; }
+  .log-edit:hover { color: var(--blue); background: #5b9cf618; }
+  .log-actions { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .log-trainer { font-size: 11px; color: var(--muted); margin-top: 3px; }
   .chk-label { display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);transition:all .15s;user-select:none;line-height:1.3; }
   .chk-label:hover { border-color:var(--green); }
   .chk-box {
@@ -761,9 +786,9 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
+  <div class="tab active" data-tab="estudiantes" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
   <div class="tab" data-tab="bitacora" onclick="switchTab(this,'bitacora')">📋 Bitácora</div>
-  <div class="tab" onclick="switchTab(this,'calendario')">📅 Calendario</div>
+  <div class="tab" data-tab="calendario" onclick="switchTab(this,'calendario')">📅 Calendario</div>
   <div class="tab" data-perm="users" onclick="switchTab(this,'solicitudes')" id="tabSolicitudes" style="display:none;">📥 Solicitudes <span id="intakeBadge" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:10px;padding:2px 7px;margin-left:4px;font-weight:800;"></span></div>
 </div>
 
@@ -825,8 +850,9 @@
     <div class="add-bar">
       <h3>📝 Registrar actividad</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;box-sizing:border-box;width:100%;">
-        <div class="field fld-eq"><label>Perro</label><select id="logDog"><option value="">-- Seleccionar --</option></select></div>
-        <div class="field fld-eq"><label>Fecha</label><input type="date" id="logDate"/></div>
+        <div class="field fld-eq"><label>Perro</label><select id="logDog" onchange="onLogDogChange()"><option value="">-- Seleccionar --</option></select></div>
+        <div class="field fld-eq"><label>Fecha</label><input type="date" id="logDate" onchange="onLogDateChange()"/></div>
+        <div id="logDupeMsg" style="display:none;grid-column:1/-1;color:var(--red);font-size:13px;padding:9px 14px;background:#ff444420;border-radius:8px;border:1px solid var(--red);"></div>
         <div class="field" style="grid-column:1 / -1;">
           <label>Actividades del día</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
@@ -846,7 +872,7 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <div class="section-title" style="margin-bottom:0;flex:1;">Historial</div>
-      <button class="btn btn-warn btn-sm" onclick="clearAllLogs()">🗑 Borrar toda la bitácora</button>
+      <button id="clearLogsBtn" class="btn btn-warn btn-sm" onclick="clearAllLogs()" style="display:none;">🗑 Borrar toda la bitácora</button>
     </div>
     <div class="filter-row">
       <div class="field"><label>Filtrar por perro</label><select id="filterDog" onchange="renderLogs()"><option value="">Todos los perros</option></select></div>
@@ -857,6 +883,7 @@
           <option value="piso">Entrenamiento de piso</option>
         </select>
       </div>
+      <div class="field" id="filterTrainerWrap" style="display:none;"><label>Filtrar por entrenador</label><select id="filterTrainer" onchange="renderLogs()"><option value="">Todos</option></select></div>
     </div>
     <div class="log-grid" id="logList"></div>
     <div class="empty" id="emptyLog" style="display:none;"><div class="empty-icon">📋</div><p>No hay actividades registradas.</p></div>
@@ -1002,6 +1029,32 @@
   </div>
 </div>
 
+<!-- EDIT LOG MODAL -->
+<div class="modal-bg" id="editLogModal">
+  <div class="modal">
+    <h3>✏️ Editar registro</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;box-sizing:border-box;width:100%;">
+      <div class="field fld-eq" style="grid-column:1/-1;"><label>Perro</label><input type="text" id="editLogDogDisplay" readonly style="opacity:0.6;cursor:default;"/></div>
+      <div class="field fld-eq" style="grid-column:1/-1;"><label>Fecha</label><input type="date" id="editLogDate"/></div>
+      <div class="field" style="grid-column:1 / -1;">
+        <label>Actividades</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+          <label class="chk-label"><input type="checkbox" id="editChkCaminata" class="chk-box"/> 🚶 Caminata estructurada</label>
+          <label class="chk-label"><input type="checkbox" id="editChkPiso" class="chk-box"/> 🏋️ Entrenamiento de piso</label>
+        </div>
+      </div>
+      <div class="field" style="grid-column:1 / -1;">
+        <label>Notas / Observaciones</label>
+        <textarea id="editLogNotes" placeholder="Notas..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-ghost" onclick="closeEditLogModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveEditLog()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="editModal" onclick="bgClose(event)">
   <div class="modal">
     <h3>✏️ Editar estudiante</h3>
@@ -1051,6 +1104,29 @@ function save(){}
 function fmtTime(t){ if(!t)return'—'; const[h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; }
 function fmtDate(d){ if(!d)return'<span style="color:var(--muted)">—</span>'; return new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'}); }
 
+function sortStudents(arr) {
+  return [...arr].sort((a, b) => {
+    const isComp = s => s.status === 'completado';
+    if (isComp(a) && !isComp(b)) return 1;
+    if (!isComp(a) && isComp(b)) return -1;
+    if (isComp(a) && isComp(b)) return 0;
+    if (!a.intake && !b.intake) {}
+    else if (!a.intake) return 1;
+    else if (!b.intake) return -1;
+    else if (a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
+    if (!a.date && !b.date) {}
+    else if (!a.date) return 1;
+    else if (!b.date) return -1;
+    else if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (!a.time && !b.time) {}
+    else if (!a.time) return 1;
+    else if (!b.time) return -1;
+    else if (a.time !== b.time) return a.time < b.time ? -1 : 1;
+    const order = { activo: 0, pendiente: 1 };
+    return (order[a.status] ?? 0) - (order[b.status] ?? 0);
+  });
+}
+
 function renderStudents(){
   const students=window.getStudents()||[];
   const tbody=document.getElementById('studentTable');
@@ -1076,27 +1152,7 @@ function renderStudents(){
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
   const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
   const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
-  // Sort: intake asc → exit date asc → time asc → status (activo < pendiente); completados at bottom unsorted
-  const sorted = [...students].sort((a, b) => {
-    const isComp = s => s.status === 'completado';
-    if (isComp(a) && !isComp(b)) return 1;
-    if (!isComp(a) && isComp(b)) return -1;
-    if (isComp(a) && isComp(b)) return 0;
-    if (!a.intake && !b.intake) {}
-    else if (!a.intake) return 1;
-    else if (!b.intake) return -1;
-    else if (a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
-    if (!a.date && !b.date) {}
-    else if (!a.date) return 1;
-    else if (!b.date) return -1;
-    else if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-    if (!a.time && !b.time) {}
-    else if (!a.time) return 1;
-    else if (!b.time) return -1;
-    else if (a.time !== b.time) return a.time < b.time ? -1 : 1;
-    const order = { activo: 0, pendiente: 1 };
-    return (order[a.status] ?? 0) - (order[b.status] ?? 0);
-  });
+  const sorted = sortStudents(students);
   const display = searchTerm ? sorted.filter(s => s.name.toLowerCase().includes(searchTerm)) : sorted;
   if(!display.length){ tbody.innerHTML=''; document.getElementById('emptyMsgText').textContent='No se encontraron perros con ese nombre.'; empty.style.display='block'; return; }
   empty.style.display='none';
@@ -1242,14 +1298,107 @@ function closeModal(){ editingId=null; document.getElementById('editModal').clas
 function bgClose(e){ if(e.target.id==='editModal')closeModal(); }
 async function saveEdit(){ if(!editingId)return; await window.FB.updateStudent(editingId,{name:document.getElementById('editName').value.trim(),breed:document.getElementById('editBreed').value.trim(),dob:document.getElementById('editDob').value,intake:document.getElementById('editIntake').value,date:document.getElementById('editDate').value,time:document.getElementById('editTime').value,status:document.getElementById('editStatus').value,obs:document.getElementById('editObs').value.trim()}); closeModal(); flash('Cambios guardados.'); }
 
-function updateDogSelects(){
-  const students=window.getStudents()||[];
-  ['logDog','filterDog'].forEach(id=>{
-    const sel=document.getElementById(id); const cur=sel.value;
-    sel.innerHTML=id==='filterDog'?'<option value="">Todos los perros</option>':'<option value="">-- Seleccionar --</option>';
-    students.forEach(s=>{ const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o); });
-    if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+// ── BITÁCORA HELPERS ──────────────────────────────────────────
+
+function canManageLogs() {
+  const r = window.getCurrentRole();
+  return r === 'superadmin' || r === 'businessowner';
+}
+function canBypassDupe() {
+  return canManageLogs();
+}
+function getTasksForDog(dogName, date, excludeId) {
+  const result = { caminata: false, piso: false };
+  (window.getLogs() || []).forEach(l => {
+    if (l.id === excludeId) return;
+    if (l.dog === dogName && l.date === date) {
+      const types = l.types || (l.type ? [l.type] : []);
+      if (types.includes('caminata')) result.caminata = true;
+      if (types.includes('piso')) result.piso = true;
+    }
   });
+  return result;
+}
+
+function refreshLogDogSelect() {
+  const students = window.getStudents() || [];
+  const date = document.getElementById('logDate')?.value || '';
+  const sel = document.getElementById('logDog');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+  sortStudents(students).filter(s => s.status !== 'completado').forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name;
+    if (date && !canBypassDupe()) {
+      const tasks = getTasksForDog(s.name, date);
+      if (tasks.caminata && tasks.piso) {
+        o.textContent = s.name + ' ✓ completado';
+        o.disabled = true;
+        o.style.color = 'var(--muted)';
+      } else {
+        o.textContent = s.name;
+      }
+    } else {
+      o.textContent = s.name;
+    }
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  refreshLogCheckboxes();
+  refreshDupeMessage();
+}
+
+function refreshLogCheckboxes() {
+  const dog = document.getElementById('logDog')?.value || '';
+  const date = document.getElementById('logDate')?.value || '';
+  const chkC = document.getElementById('chkCaminata');
+  const chkP = document.getElementById('chkPiso');
+  if (!chkC || !chkP) return;
+  if (dog && date && !canBypassDupe()) {
+    const tasks = getTasksForDog(dog, date);
+    chkC.disabled = tasks.caminata;
+    if (tasks.caminata) chkC.checked = false;
+    chkP.disabled = tasks.piso;
+    if (tasks.piso) chkP.checked = false;
+  } else {
+    chkC.disabled = false;
+    chkP.disabled = false;
+  }
+}
+
+function refreshDupeMessage() {
+  const dog = document.getElementById('logDog')?.value || '';
+  const date = document.getElementById('logDate')?.value || '';
+  const msg = document.getElementById('logDupeMsg');
+  if (!msg) return;
+  if (dog && date && !canBypassDupe()) {
+    const tasks = getTasksForDog(dog, date);
+    if (tasks.caminata && tasks.piso) {
+      msg.textContent = '⚠️ ' + dog + ' ya fue trabajado completamente ese día. No es posible registrar otra actividad.';
+      msg.style.display = '';
+      return;
+    }
+  }
+  msg.style.display = 'none';
+}
+
+function onLogDateChange() { refreshLogDogSelect(); }
+function onLogDogChange()  { refreshLogCheckboxes(); refreshDupeMessage(); }
+
+function updateDogSelects() {
+  const students = window.getStudents() || [];
+  const sorted = sortStudents(students);
+  // filterDog: all dogs, no date filtering
+  const filterSel = document.getElementById('filterDog');
+  if (filterSel) {
+    const cur = filterSel.value;
+    filterSel.innerHTML = '<option value="">Todos los perros</option>';
+    sorted.forEach(s => { const o = document.createElement('option'); o.value = s.name; o.textContent = s.name; filterSel.appendChild(o); });
+    if ([...filterSel.options].some(o => o.value === cur)) filterSel.value = cur;
+  }
+  // logDog: date-aware
+  refreshLogDogSelect();
 }
 
 async function addLog(){
@@ -1261,60 +1410,146 @@ async function addLog(){
   if(!dog){flash('Selecciona el perro.');return;}
   if(!date){flash('Selecciona la fecha.');return;}
   if(!caminata&&!piso){flash('Selecciona al menos una actividad.');return;}
+  // Anti-duplicate check
+  if(!canBypassDupe()){
+    const tasks=getTasksForDog(dog,date);
+    if((caminata&&tasks.caminata)||(piso&&tasks.piso)){
+      flash('⚠️ Una o más actividades ya fueron registradas para '+dog+' ese día.');
+      return;
+    }
+  }
   const types=[];
   if(caminata)types.push('caminata');
   if(piso)types.push('piso');
+  const cu=window.getCurrentUser();
+  const trainerName=cu?.displayName||cu?.email||'Desconocido';
+  const trainerUid=cu?.uid||'';
   try {
-    await window.FB.addLog({dog,date,types,notes});
+    await window.FB.addLog({dog,date,types,notes,trainer:trainerName,trainerUid});
   } catch(err) {
     flash('Error al guardar: ' + err.message);
     console.error(err);
     return;
   }
   document.getElementById('logDog').value='';
-  document.getElementById('logDate').value='';
   document.getElementById('logNotes').value='';
   document.getElementById('chkCaminata').checked=false;
   document.getElementById('chkPiso').checked=false;
+  document.getElementById('chkCaminata').disabled=false;
+  document.getElementById('chkPiso').disabled=false;
+  document.getElementById('logDupeMsg').style.display='none';
   flash('Actividad registrada.');
 }
 
-function deleteLog(id){ if(!confirm('¿Eliminar este registro?'))return; logs=logs.filter(l=>l.id!==id); save();renderLogs(); }
+function deleteLog(id){ if(!confirm('¿Eliminar este registro?'))return; renderLogs(); }
 
 function renderLogs(){
   const logs=window.getLogs()||[];
+  const role=window.getCurrentRole();
+  const isOwner=canManageLogs();
+  const currentUid=window.getCurrentUser()?.uid||'';
+
+  // Show/hide clear button and trainer filter based on role
+  const clearBtn=document.getElementById('clearLogsBtn');
+  if(clearBtn) clearBtn.style.display=isOwner?'':'none';
+  const filterTrainerWrap=document.getElementById('filterTrainerWrap');
+  if(filterTrainerWrap) filterTrainerWrap.style.display=isOwner?'':'none';
+
+  // Update trainer filter options
+  if(isOwner){
+    const trainerSel=document.getElementById('filterTrainer');
+    if(trainerSel){
+      const cur=trainerSel.value;
+      trainerSel.innerHTML='<option value="">Todos</option>';
+      const trainers=[...new Set(logs.map(l=>l.trainer).filter(Boolean))].sort();
+      trainers.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;trainerSel.appendChild(o);});
+      if([...trainerSel.options].some(o=>o.value===cur))trainerSel.value=cur;
+    }
+  }
+
   const fd=document.getElementById('filterDog').value;
   const ft=document.getElementById('filterType').value;
+  const ftr=isOwner?(document.getElementById('filterTrainer')?.value||''):'';
+
   const filtered=logs.filter(l=>{
     const types=l.types||(l.type?[l.type]:[]);
-    return (!fd||l.dog===fd)&&(!ft||types.includes(ft));
+    return(!fd||l.dog===fd)&&(!ft||types.includes(ft))&&(!ftr||l.trainer===ftr);
   });
+
   const el=document.getElementById('logList');
   const empty=document.getElementById('emptyLog');
   if(!filtered.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
+
   const actMeta={
     caminata:{icon:'🚶',label:'Caminata estructurada',chip:'chip-blue'},
     piso:{icon:'🏋️',label:'Entrenamiento de piso',chip:'chip-green'}
   };
-  el.innerHTML=filtered.map(l=>{
-    const types=l.types||(l.type?[l.type]:[]);
-    const both=types.length>1;
-    const cls=both?'both':types[0]==='caminata'?'walk':'train';
-    const icon=both?'⭐':actMeta[types[0]]?.icon||'📋';
-    const chips=types.map(t=>`<span class="chip ${actMeta[t]?.chip||'chip-gray'}">${actMeta[t]?.label||t}</span>`).join(' ');
-    const ds=l.date?new Date(l.date+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
-    const safeId = l.id.replace(/'/g,"");
-    return `<div class="log-card ${cls}">
-      <div class="log-icon">${icon}</div>
-      <div class="log-body">
-        <div class="log-top"><span class="log-name">${esc(l.dog)}</span>${chips}</div>
-        <div class="log-meta">${ds}</div>
-        ${l.notes?`<div class="log-notes">"${esc(l.notes)}"</div>`:''}
-      </div>
-      <button class="log-del" onclick="delLog('${safeId}')">✕</button>
-    </div>`;
-  }).join('');
+
+  if(isOwner){
+    // Consolidated view: group by dog + date
+    const groups={};
+    filtered.forEach(l=>{
+      const key=l.dog+'||'+l.date;
+      if(!groups[key]) groups[key]={dog:l.dog,date:l.date,entries:[]};
+      groups[key].entries.push(l);
+    });
+    el.innerHTML=Object.values(groups).map(g=>{
+      const allTypes={};
+      g.entries.forEach(e=>{
+        const types=e.types||(e.type?[e.type]:[]);
+        types.forEach(t=>{
+          if(!allTypes[t])allTypes[t]=[];
+          allTypes[t].push(e.trainer||'—');
+        });
+      });
+      const ds=g.date?new Date(g.date+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
+      const bothDone=allTypes.caminata&&allTypes.piso;
+      const icon=bothDone?'⭐':allTypes.caminata?'🚶':'🏋️';
+      const cls=bothDone?'both':allTypes.caminata?'walk':'train';
+      const typeChips=Object.entries(allTypes).map(([t,trainers])=>
+        `<span class="chip ${actMeta[t]?.chip||'chip-gray'}">${actMeta[t]?.icon||''} ${actMeta[t]?.label||t} · ${trainers.map(esc).join(', ')}</span>`
+      ).join(' ');
+      const notes=g.entries.filter(e=>e.notes).map(e=>`<em>${esc(e.trainer||'—')}:</em> "${esc(e.notes)}"`).join('<br>');
+      const delBtns=g.entries.map(e=>{
+        const sid=e.id.replace(/'/g,'');
+        return `<button class="btn btn-sm" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:10px;padding:3px 8px;" onclick="delLog('${sid}')">✕ ${esc(e.trainer||'—')}</button>`;
+      }).join(' ');
+      return `<div class="log-card ${cls}">
+        <div class="log-icon">${icon}</div>
+        <div class="log-body">
+          <div class="log-top"><span class="log-name">${esc(g.dog)}</span>${typeChips}</div>
+          <div class="log-meta">${ds}</div>
+          ${notes?`<div class="log-notes">${notes}</div>`:''}
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">${delBtns}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    // Normal view for trainers
+    el.innerHTML=filtered.map(l=>{
+      const types=l.types||(l.type?[l.type]:[]);
+      const both=types.length>1;
+      const cls=both?'both':types[0]==='caminata'?'walk':'train';
+      const icon=both?'⭐':actMeta[types[0]]?.icon||'📋';
+      const chips=types.map(t=>`<span class="chip ${actMeta[t]?.chip||'chip-gray'}">${actMeta[t]?.label||t}</span>`).join(' ');
+      const ds=l.date?new Date(l.date+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
+      const sid=l.id.replace(/'/g,'');
+      const isOwn=l.trainerUid===currentUid;
+      const trainerBadge=l.trainer?`<span class="log-trainer">👤 ${esc(l.trainer)}</span>`:'';
+      return `<div class="log-card ${cls}">
+        <div class="log-icon">${icon}</div>
+        <div class="log-body">
+          <div class="log-top"><span class="log-name">${esc(l.dog)}</span>${chips}</div>
+          <div class="log-meta">${ds}${trainerBadge?'&nbsp;&nbsp;'+trainerBadge:''}</div>
+          ${l.notes?`<div class="log-notes">"${esc(l.notes)}"</div>`:''}
+        </div>
+        <div class="log-actions">
+          ${isOwn?`<button class="log-edit" title="Editar" onclick="openEditLog('${sid}')">✏️</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 window.renderLogs = renderLogs; // assign immediately after definition
 
@@ -1330,7 +1565,7 @@ async function confirmClearCompleted(){
   flash(toDelete.length+' estudiante(s) completados eliminados.');
 }
 
-function clearAllLogs(){ document.getElementById('clearLogsModal').classList.add('open'); }
+function clearAllLogs(){ if(!canManageLogs()){ flash('No tienes permiso para borrar la bitácora.'); return; } document.getElementById('clearLogsModal').classList.add('open'); }
 async function confirmClearLogs(){
   const logs=window.getLogs()||[];
   for(const l of logs){ await window.FB.deleteLog(l.id); }
@@ -1485,21 +1720,35 @@ function getExportRange(){
   return { m, y, monthName: monthNames[m], filtStudents, filtLogs };
 }
 
+function consolidateLogs(logs) {
+  const groups = {};
+  logs.forEach(l => {
+    const key = l.dog + '||' + l.date;
+    if (!groups[key]) groups[key] = { dog: l.dog, date: l.date, tasks: {}, notes: [] };
+    const types = l.types || (l.type ? [l.type] : []);
+    types.forEach(t => {
+      if (!groups[key].tasks[t]) groups[key].tasks[t] = [];
+      groups[key].tasks[t].push(l.trainer || '—');
+    });
+    if (l.notes) groups[key].notes.push((l.trainer || '—') + ': ' + l.notes);
+  });
+  return Object.values(groups);
+}
+
 function runExportCSV(){
   const {monthName, y, filtStudents, filtLogs} = getExportRange();
-  let csv = `PAWS TRAINING — ${monthName} ${y}
-
-`;
+  const actNames = { caminata: 'Caminata', piso: 'Piso' };
+  let csv = `PAWS TRAINING — ${monthName} ${y}\n\n`;
   csv += 'ESTUDIANTES\nNombre,Fecha Ingreso,Fecha Salida,Hora,Estado\n';
   filtStudents.forEach(s => {
-    csv += `"${s.name}","${s.intake||''}","${s.date||''}","${s.time||''}","${s.status}"
-`;
+    csv += `"${s.name}","${s.intake||''}","${s.date||''}","${s.time||''}","${s.status}"\n`;
   });
-  csv += '\nBITACORA\nPerro,Fecha,Actividades,Notas\n';
-  filtLogs.forEach(l => {
-    const types=(l.types||[l.type]||[]).join('+');
-    csv += `"${l.dog}","${l.date}","${types}","${(l.notes||'').replace(/"/g,"'")}"
-`;
+  csv += '\nBITACORA\nPerro,Fecha,Actividades,Entrenadores,Notas\n';
+  consolidateLogs(filtLogs).forEach(g => {
+    const activities = Object.entries(g.tasks).map(([t, trainers]) => `${actNames[t]||t} (${trainers.join(', ')})`).join(' + ');
+    const trainers = [...new Set(Object.values(g.tasks).flat())].join(', ');
+    const notes = g.notes.join(' | ');
+    csv += `"${g.dog}","${g.date}","${activities}","${trainers}","${notes.replace(/"/g,"'")}"\n`;
   });
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
@@ -1550,12 +1799,13 @@ function runExportPDF(){
   y0 += 22;
 
   // ── Summary boxes
+  const consolidated = consolidateLogs(filtLogs);
   doc.setTextColor(...dark);
   const boxes = [
     {label:'Estudiantes', val: filtStudents.length},
-    {label:'Actividades', val: filtLogs.length},
-    {label:'Caminatas',   val: filtLogs.filter(l=>(l.types||[l.type]).includes('caminata')).length},
-    {label:'Piso',        val: filtLogs.filter(l=>(l.types||[l.type]).includes('piso')).length},
+    {label:'Sesiones',    val: consolidated.length},
+    {label:'Caminatas',   val: consolidated.filter(g=>g.tasks.caminata).length},
+    {label:'Piso',        val: consolidated.filter(g=>g.tasks.piso).length},
   ];
   const bw = (pageW-24)/4;
   boxes.forEach((b,i) => {
@@ -1594,16 +1844,21 @@ function runExportPDF(){
   doc.setFontSize(10); doc.setTextColor(...green); doc.setFont('helvetica','bold');
   doc.text('Bitácora del mes', 12, y0);
   y0 += 4;
-  if(filtLogs.length){
+  if(consolidated.length){
     doc.autoTable({
       startY: y0,
-      head: [['Perro','Fecha','Actividades','Notas']],
-      body: filtLogs.map(l=>[ l.dog, fmtD(l.date), (l.types||[l.type]||[]).map(t=>actLabel[t]||t).join(', '), l.notes||'—' ]),
+      head: [['Perro','Fecha','Actividades','Entrenadores','Notas']],
+      body: consolidated.map(g => {
+        const activities = Object.entries(g.tasks).map(([t, trainers]) => (actLabel[t]||t)+' ('+trainers.join(', ')+')').join('\n');
+        const trainers = [...new Set(Object.values(g.tasks).flat())].join(', ');
+        const notes = g.notes.join(' | ') || '—';
+        return [g.dog, fmtD(g.date), activities, trainers, notes];
+      }),
       theme: 'grid',
       headStyles: { fillColor: dark, textColor: white, fontSize:8, fontStyle:'bold' },
       bodyStyles: { fontSize:8, textColor: dark },
       alternateRowStyles: { fillColor: [249,249,249] },
-      columnStyles: { 3:{cellWidth:60} },
+      columnStyles: { 0:{cellWidth:25}, 1:{cellWidth:22}, 2:{cellWidth:50}, 3:{cellWidth:38}, 4:{cellWidth:51} },
       margin: { left:12, right:12 },
     });
   } else {
@@ -2035,6 +2290,7 @@ function switchTab(el,name){
   if(name==='calendario') renderCalendar();
   if(name==='solicitudes') loadIntakes();
 }
+window.switchTab = switchTab;
 
 function flash(msg){
   const d=document.createElement('div');d.textContent=msg;
@@ -2046,6 +2302,7 @@ function flash(msg){
 // Global delete/edit handlers called directly from rendered HTML
 let _pendingDelLogId = null;
 function delLog(id){
+  if(!canManageLogs()){ flash('No tienes permiso para eliminar registros.'); return; }
   _pendingDelLogId = id;
   document.getElementById('delLogModal').classList.add('open');
 }
@@ -2057,6 +2314,46 @@ async function confirmDelLog(){
   if(_pendingDelLogId){ await window.FB.deleteLog(_pendingDelLogId); flash('Registro eliminado.'); }
   _pendingDelLogId = null;
   document.getElementById('delLogModal').classList.remove('open');
+}
+
+// Edit log
+let _editingLogId = null;
+function openEditLog(id){
+  const logs=window.getLogs()||[];
+  const l=logs.find(x=>x.id===id);
+  if(!l) return;
+  const isOwner=canManageLogs();
+  const currentUid=window.getCurrentUser()?.uid||'';
+  if(!isOwner && l.trainerUid!==currentUid){ flash('No tienes permiso para editar este registro.'); return; }
+  _editingLogId=id;
+  document.getElementById('editLogDogDisplay').value=l.dog||'';
+  document.getElementById('editLogDate').value=l.date||'';
+  const types=l.types||(l.type?[l.type]:[]);
+  document.getElementById('editChkCaminata').checked=types.includes('caminata');
+  document.getElementById('editChkPiso').checked=types.includes('piso');
+  document.getElementById('editLogNotes').value=l.notes||'';
+  document.getElementById('editLogModal').classList.add('open');
+}
+function closeEditLogModal(){
+  _editingLogId=null;
+  document.getElementById('editLogModal').classList.remove('open');
+}
+async function saveEditLog(){
+  if(!_editingLogId) return;
+  const date=document.getElementById('editLogDate').value;
+  const caminata=document.getElementById('editChkCaminata').checked;
+  const piso=document.getElementById('editChkPiso').checked;
+  const notes=document.getElementById('editLogNotes').value.trim();
+  if(!date){ flash('Selecciona la fecha.'); return; }
+  if(!caminata&&!piso){ flash('Selecciona al menos una actividad.'); return; }
+  const types=[];
+  if(caminata)types.push('caminata');
+  if(piso)types.push('piso');
+  try{
+    await window.FB.updateLog(_editingLogId,{date,types,notes});
+    flash('Registro actualizado.');
+    closeEditLogModal();
+  }catch(err){ flash('Error al actualizar: '+err.message); }
 }
 async function delStudent(id){
   if(!confirm('¿Eliminar este estudiante?')) return;
