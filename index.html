@@ -76,8 +76,24 @@
 
   async function _requestNotifPermission() {
     if (!('Notification' in window) || Notification.permission === 'granted' || Notification.permission === 'denied') return;
-    await Notification.requestPermission();
+    const result = await Notification.requestPermission();
+    const btn = document.getElementById('notifPromptBtn');
+    if (btn) btn.style.display = 'none';
+    if (result === 'granted' && window.flash) window.flash('🔔 Notificaciones activadas.');
   }
+
+  function _checkNotifPrompt() {
+    if (!('Notification' in window)) return;
+    const btn = document.getElementById('notifPromptBtn');
+    if (!btn) return;
+    if (Notification.permission === 'default') {
+      btn.style.display = '';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  window._requestNotifPermission = _requestNotifPermission;
 
   // ── AUTH STATE ─────────────────────────────────────
   onAuthStateChanged(auth, async (user) => {
@@ -285,10 +301,17 @@
     document.getElementById('userRoleDisplay').textContent = currentRole.toUpperCase();
     // Set user photo
     const avatarEl = document.getElementById('userAvatarDisplay');
+    const avatarFallback = (currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
     if (currentUser.photoURL) {
-      avatarEl.innerHTML = `<img src="${currentUser.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" referrerpolicy="no-referrer"/>`;
+      const img = document.createElement('img');
+      img.src = currentUser.photoURL;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+      img.referrerPolicy = 'no-referrer-when-downgrade';
+      img.onerror = () => { avatarEl.textContent = avatarFallback; };
+      avatarEl.innerHTML = '';
+      avatarEl.appendChild(img);
     } else {
-      avatarEl.textContent = (currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
+      avatarEl.textContent = avatarFallback;
     }
     // Hide bitacora tab for non-logs roles
     if (!perms.logs) {
@@ -305,8 +328,8 @@
         if (bitTab && window.switchTab) window.switchTab(bitTab, 'bitacora');
       }, 200);
     }
-    // Request notification permission for owners
-    if (perms.users) setTimeout(_requestNotifPermission, 1500);
+    // Show notification enable button for owners if not yet granted
+    if (perms.users) _checkNotifPrompt();
     // Force render after app is shown
     setTimeout(() => {
       if (window.renderStudents) window.renderStudents();
@@ -823,6 +846,7 @@
           <div class="user-role" id="userRoleDisplay">—</div>
         </div>
       </div>
+      <button id="notifPromptBtn" onclick="window._requestNotifPermission()" title="Activar notificaciones" style="display:none;background:none;border:1px solid var(--green);color:var(--green);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;">🔔 Notif.</button>
       <span class="pill" id="totalCount">0 PERROS</span>
       <button class="btn-logout" onclick="window.FB.logout()">Salir</button>
     </div>
