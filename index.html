@@ -77,20 +77,16 @@
   async function _requestNotifPermission() {
     if (!('Notification' in window) || Notification.permission === 'granted' || Notification.permission === 'denied') return;
     const result = await Notification.requestPermission();
-    const btn = document.getElementById('notifPromptBtn');
-    if (btn) btn.style.display = 'none';
+    const banner = document.getElementById('notifBanner');
+    if (banner) banner.style.display = 'none';
     if (result === 'granted' && window.flash) window.flash('🔔 Notificaciones activadas.');
   }
 
   function _checkNotifPrompt() {
     if (!('Notification' in window)) return;
-    const btn = document.getElementById('notifPromptBtn');
-    if (!btn) return;
-    if (Notification.permission === 'default') {
-      btn.style.display = '';
-    } else {
-      btn.style.display = 'none';
-    }
+    const banner = document.getElementById('notifBanner');
+    if (!banner) return;
+    banner.style.display = Notification.permission === 'default' ? 'flex' : 'none';
   }
 
   window._requestNotifPermission = _requestNotifPermission;
@@ -306,7 +302,7 @@
       const img = document.createElement('img');
       img.src = currentUser.photoURL;
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-      img.referrerPolicy = 'no-referrer-when-downgrade';
+      img.referrerPolicy = 'no-referrer';
       img.onerror = () => { avatarEl.textContent = avatarFallback; };
       avatarEl.innerHTML = '';
       avatarEl.appendChild(img);
@@ -846,11 +842,18 @@
           <div class="user-role" id="userRoleDisplay">—</div>
         </div>
       </div>
-      <button id="notifPromptBtn" onclick="window._requestNotifPermission()" title="Activar notificaciones" style="display:none;background:none;border:1px solid var(--green);color:var(--green);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;">🔔 Notif.</button>
       <span class="pill" id="totalCount">0 PERROS</span>
       <button class="btn-logout" onclick="window.FB.logout()">Salir</button>
     </div>
 </header>
+
+<div id="notifBanner" style="display:none;background:var(--surface2);border-bottom:2px solid var(--green);padding:10px 20px;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+  <span style="font-size:13px;font-weight:600;color:var(--text);">🔔 Activa las notificaciones para recibir alertas de nuevas solicitudes</span>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button onclick="window._requestNotifPermission()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;">Activar</button>
+    <button onclick="document.getElementById('notifBanner').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+  </div>
+</div>
 
 <div class="tabs">
   <div class="tab active" data-tab="estudiantes" onclick="switchTab(this,'estudiantes')">🐕 Estudiantes</div>
