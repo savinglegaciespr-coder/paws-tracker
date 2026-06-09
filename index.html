@@ -300,10 +300,14 @@
     const avatarFallback = (currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
     if (currentUser.photoURL) {
       const img = document.createElement('img');
-      img.src = currentUser.photoURL;
+      // Change =s96-c → =s200-c to bust browser cache of old silhouette response
+      const photoUrl = /googleusercontent\.com/.test(currentUser.photoURL)
+        ? currentUser.photoURL.replace(/=s\d+(-c)?$/, '=s200-c')
+        : currentUser.photoURL;
+      img.src = photoUrl;
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
       img.referrerPolicy = 'no-referrer';
-      img.onerror = () => { avatarEl.textContent = avatarFallback; };
+      img.onerror = () => { avatarEl.innerHTML = ''; avatarEl.textContent = avatarFallback; };
       avatarEl.innerHTML = '';
       avatarEl.appendChild(img);
     } else {
