@@ -182,14 +182,16 @@
 
     unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
       students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Auto-transition pendiente → activo when intake date has arrived
-      const _n = new Date(), _p = n => String(n).padStart(2,'0');
-      const _today = _n.getFullYear()+'-'+_p(_n.getMonth()+1)+'-'+_p(_n.getDate());
-      students.forEach(s => {
-        if (s.status === 'pendiente' && s.intake && s.intake <= _today) {
-          updateStudent(s.id, { status: 'activo' }).catch(() => {});
-        }
-      });
+      // Auto-transition pendiente → activo when intake date has arrived (only roles with write access)
+      if (perms.studentsEdit) {
+        const _n = new Date(), _p = n => String(n).padStart(2,'0');
+        const _today = _n.getFullYear()+'-'+_p(_n.getMonth()+1)+'-'+_p(_n.getDate());
+        students.forEach(s => {
+          if (s.status === 'pendiente' && s.intake && s.intake <= _today) {
+            updateStudent(s.id, { status: 'activo' }).catch(() => {});
+          }
+        });
+      }
       const tryRender = () => {
         if (window.renderStudents && document.getElementById('studentTable')) {
           window.renderStudents();
@@ -1175,7 +1177,6 @@ let editingId = null;
 
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-function save(){}
 
 function fmtTime(t){ if(!t)return'—'; const[h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; }
 function fmtDate(d){ if(!d)return'<span style="color:var(--muted)">—</span>'; return new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'}); }
@@ -1348,7 +1349,6 @@ async function addStudent(){
   flash('Estudiante agregado.');
 }
 
-function deleteStudent(id){ students=students.filter(s=>s.id!==id); save();renderStudents(); }
 function openEdit(id){
   const students=window.getStudents()||[];
   const s=students.find(x=>x.id===id); if(!s)return;
@@ -1517,8 +1517,6 @@ async function addLog(){
   flash('Actividad registrada.');
 }
 
-function deleteLog(id){ if(!confirm('¿Eliminar este registro?'))return; renderLogs(); }
-
 function renderLogs(){
   const logs=window.getLogs()||[];
   const role=window.getCurrentRole();
@@ -1650,102 +1648,6 @@ async function confirmClearLogs(){
   for(const l of logs){ await window.FB.deleteLog(l.id); }
   closeModal2('clearLogsModal');
   flash('Bitácora borrada.');
-}
-
-// ── EXPORT CSV ─────────────────────────────────────
-function exportCSV(){
-  // Students sheet
-  let csv = 'ESTUDIANTES\n';
-  csv += 'Nombre,Fecha Ingreso,Fecha Salida,Hora Salida,Estado\n';
-  students.forEach(s => {
-    csv += `"${s.name}","${s.intake||''}","${s.date||''}","${s.time||''}","${s.status}"\n`;
-  });
-  csv += '\nBITÁCORA\n';
-  csv += 'Perro,Fecha,Actividades,Notas\n';
-  logs.forEach(l => {
-    const types = (l.types||[l.type]||[]).join(' + ');
-    csv += `"${l.dog}","${l.date}","${types}","${(l.notes||'').replace(/"/g,"'")}"\n`;
-  });
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'paws-training-' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click(); URL.revokeObjectURL(url);
-}
-
-// ── EXPORT PDF ─────────────────────────────────────
-function exportPDF(){
-  const statusLabel = { activo:'Activo', salida_hoy:'Salida hoy', completado:'Completado', pendiente:'Pendiente' };
-  const actLabel = { caminata:'Caminata estructurada', piso:'Entrenamiento de piso', entrenamiento:'Entrenamiento basico' };
-  const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '--';
-  const fmtT = t => { if(!t)return'--'; const[h,m]=t.split(':').map(Number); return (h%12||12)+':'+(String(m).padStart(2,'0'))+' '+(h>=12?'pm':'am'); };
-  const today = new Date().toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-
-  const exportStudents = students.filter(s => s.status === 'activo' || s.status === 'pendiente');
-  let studentRows = '';
-  exportStudents.forEach((s,i) => {
-    const bg = i%2===0 ? '#ffffff' : '#f5f5f5';
-    studentRows += '<tr style="background:'+bg+'">'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+(i+1)+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;font-weight:bold;">'+s.name+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+fmtD(s.intake)+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+fmtD(s.date)+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+fmtT(s.time)+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+(statusLabel[s.status]||s.status)+'</td>'
-      + '</tr>';
-  });
-
-  let logRows = '';
-  logs.forEach((l,i) => {
-    const bg = i%2===0 ? '#ffffff' : '#f5f5f5';
-    const types = (l.types||[l.type]||[]).map(t=>actLabel[t]||t).join(', ');
-    logRows += '<tr style="background:'+bg+'">'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;font-weight:bold;">'+l.dog+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+fmtD(l.date)+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+types+'</td>'
-      + '<td style="padding:7px 10px;border-bottom:1px solid #ddd;">'+(l.notes||'--')+'</td>'
-      + '</tr>';
-  });
-
-  const noLogs = logs.length === 0 ? '<p style="color:#888;font-size:13px;">No hay actividades registradas.</p>' : '';
-  const logTable = logs.length > 0
-    ? '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead><tr>'
-      + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Perro</th>'
-      + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Fecha</th>'
-      + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Actividades</th>'
-      + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Notas</th>'
-      + '</tr></thead><tbody>'+logRows+'</tbody></table>'
-    : noLogs;
-
-  const content = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Paws Training Reporte</title></head><body style="font-family:Arial,sans-serif;padding:30px;color:#222;">'
-    + '<h1 style="color:#6db33f;font-size:26px;margin-bottom:4px;">PAWS TRAINING</h1>'
-    + '<p style="color:#888;font-size:12px;margin-bottom:24px;">by Pet Lovers Sitting &nbsp;&middot;&nbsp; Reporte: '+today+'</p>'
-    + '<h2 style="color:#6db33f;font-size:16px;border-bottom:2px solid #6db33f;padding-bottom:4px;margin:24px 0 12px;">Estudiantes ('+exportStudents.length+')</h2>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-    + '<thead><tr>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">#</th>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Nombre</th>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Ingreso</th>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Salida</th>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Hora</th>'
-    + '<th style="background:#2a2a2a;color:#f0ede8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;">Estado</th>'
-    + '</tr></thead><tbody>'+studentRows+'</tbody></table>'
-    + '<h2 style="color:#6db33f;font-size:16px;border-bottom:2px solid #6db33f;padding-bottom:4px;margin:28px 0 12px;">Bitacora de actividades ('+logs.length+')</h2>'
-    + logTable
-    + '<p style="margin-top:30px;font-size:11px;color:#aaa;text-align:center;">Paws Training by Pet Lovers Sitting</p>'
-    + '</body></html>';
-
-  const blob = new Blob([content], {type:'text/html;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'paws-training-reporte-' + new Date().toISOString().slice(0,10) + '.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  flash('Reporte descargado. Abrelo en tu navegador e imprime para PDF.');
 }
 
 // ── EXPORT MODAL ──────────────────────────────────
