@@ -94,7 +94,8 @@
   // ── AUTH STATE ─────────────────────────────────────
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      currentUser = user;
+      await user.reload();
+      currentUser = auth.currentUser;
       // Check user role in Firestore
       const userDoc = await getDocs(collection(db, 'users'));
       const userData = userDoc.docs.find(d => d.id === user.uid);
