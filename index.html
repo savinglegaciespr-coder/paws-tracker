@@ -187,7 +187,7 @@
         const _n = new Date(), _p = n => String(n).padStart(2,'0');
         const _today = _n.getFullYear()+'-'+_p(_n.getMonth()+1)+'-'+_p(_n.getDate());
         students.forEach(s => {
-          if (s.status === 'pendiente' && s.intake && s.intake <= _today) {
+          if (s.status === 'pendiente' && countDaysIn(s.intake) >= 1) {
             updateStudent(s.id, { status: 'activo' }).catch(() => {});
           }
         });
@@ -1216,7 +1216,7 @@ function renderStudents(){
   const _pad = n => String(n).padStart(2,'0');
   const todayStr = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
   const a=students.filter(s=>s.status==='activo').length;
-  const sh=students.filter(s=>s.date===todayStr).length;
+  const sh=students.filter(s=>s.date===todayStr&&s.status!=='completado').length;
   const done=students.filter(s=>s.status==='completado').length;
   document.getElementById('statsRow').innerHTML=`
     <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${students.length}</div></div>
@@ -1408,15 +1408,16 @@ function refreshLogDogSelect() {
     o.value = s.name;
     if (date && !canBypassDupe()) {
       const tasks = getTasksForDog(s.name, date);
+      const label = s.breed ? s.name + ' · ' + s.breed : s.name;
       if (tasks.caminata && tasks.piso) {
-        o.textContent = s.name + ' ✓ completado';
+        o.textContent = label + ' ✓ completado';
         o.disabled = true;
         o.style.color = 'var(--muted)';
       } else {
-        o.textContent = s.name;
+        o.textContent = label;
       }
     } else {
-      o.textContent = s.name;
+      o.textContent = s.breed ? s.name + ' · ' + s.breed : s.name;
     }
     sel.appendChild(o);
   });
@@ -1470,7 +1471,7 @@ function updateDogSelects() {
   if (filterSel) {
     const cur = filterSel.value;
     filterSel.innerHTML = '<option value="">Todos los perros</option>';
-    sorted.forEach(s => { const o = document.createElement('option'); o.value = s.name; o.textContent = s.name; filterSel.appendChild(o); });
+    sorted.forEach(s => { const o = document.createElement('option'); o.value = s.name; o.textContent = s.breed ? s.name + ' · ' + s.breed : s.name; filterSel.appendChild(o); });
     if ([...filterSel.options].some(o => o.value === cur)) filterSel.value = cur;
   }
   // logDog: date-aware
@@ -1508,12 +1509,14 @@ async function addLog(){
     return;
   }
   document.getElementById('logDog').value='';
+  document.getElementById('logDate').value='';
   document.getElementById('logNotes').value='';
   document.getElementById('chkCaminata').checked=false;
   document.getElementById('chkPiso').checked=false;
   document.getElementById('chkCaminata').disabled=false;
   document.getElementById('chkPiso').disabled=false;
   document.getElementById('logDupeMsg').style.display='none';
+  refreshLogDogSelect();
   flash('Actividad registrada.');
 }
 
