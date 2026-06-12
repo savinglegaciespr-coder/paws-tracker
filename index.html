@@ -210,6 +210,7 @@
         else { setTimeout(tryRenderLogs, 100); }
       };
       tryRenderLogs();
+      if (window.renderStudents) window.renderStudents();
     });
   }
 
@@ -457,6 +458,13 @@
   window.getPerms = () => perms;
   window.PERMISSIONS = PERMISSIONS;
   window.loginWithGoogle = loginWithGoogle;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (window.renderStudents) window.renderStudents();
+      if (window.renderLogs) window.renderLogs();
+    }
+  });
 </script>
 <style>
 
@@ -1383,6 +1391,10 @@ function canManageLogs() {
 function canBypassDupe() {
   return canManageLogs();
 }
+function dogKey(s, all) {
+  return (all||[]).filter(x => x.name === s.name).length > 1 && s.breed
+    ? s.name + ' · ' + s.breed : s.name;
+}
 function getTasksForDog(dogName, date, excludeId) {
   const result = { caminata: false, piso: false };
   (window.getLogs() || []).forEach(l => {
@@ -1405,9 +1417,10 @@ function refreshLogDogSelect() {
   sel.innerHTML = '<option value="">-- Seleccionar --</option>';
   sortStudents(students).filter(s => s.status !== 'completado').forEach(s => {
     const o = document.createElement('option');
-    o.value = s.name;
+    const key = dogKey(s, students);
+    o.value = key;
     if (date && !canBypassDupe()) {
-      const tasks = getTasksForDog(s.name, date);
+      const tasks = getTasksForDog(key, date);
       const label = s.breed ? s.name + ' · ' + s.breed : s.name;
       if (tasks.caminata && tasks.piso) {
         o.textContent = label + ' ✓ completado';
@@ -1471,7 +1484,7 @@ function updateDogSelects() {
   if (filterSel) {
     const cur = filterSel.value;
     filterSel.innerHTML = '<option value="">Todos los perros</option>';
-    sorted.forEach(s => { const o = document.createElement('option'); o.value = s.name; o.textContent = s.breed ? s.name + ' · ' + s.breed : s.name; filterSel.appendChild(o); });
+    sorted.forEach(s => { const o = document.createElement('option'); o.value = dogKey(s, sorted); o.textContent = s.breed ? s.name + ' · ' + s.breed : s.name; filterSel.appendChild(o); });
     if ([...filterSel.options].some(o => o.value === cur)) filterSel.value = cur;
   }
   // logDog: date-aware
@@ -1872,7 +1885,7 @@ function openDogReport(id){
   _reportDogId = id;
   const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}) : '—';
   const actLabel = {caminata:'🚶 Caminata estructurada',piso:'🏋️ Entrenamiento de piso'};
-  const dogLogs = logs.filter(l=>l.dog===s.name).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const dogLogs = logs.filter(l=>l.dog===s.name||l.dog===dogKey(s,students)).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   const daysIn = countDaysIn(s.intake);
   const caminatas = dogLogs.filter(l=>(l.types||[l.type]).includes('caminata')).length;
@@ -1927,7 +1940,7 @@ function exportDogReport(){
   const s = students.find(x=>x.id===_reportDogId); if(!s) return;
   const fmtD = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-PR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
   const actLabel = {caminata:'Caminata estructurada',piso:'Entrenamiento de piso'};
-  const dogLogs = logs.filter(l=>l.dog===s.name).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const dogLogs = logs.filter(l=>l.dog===s.name||l.dog===dogKey(s,students)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const daysIn = countDaysIn(s.intake) ?? '—';
   const caminatas = dogLogs.filter(l=>(l.types||[l.type]).includes('caminata')).length;
   const pisos     = dogLogs.filter(l=>(l.types||[l.type]).includes('piso')).length;
@@ -1979,25 +1992,26 @@ function renderCalendar(){
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay  = new Date(calYear, calMonth+1, 0);
   const startDow = (firstDay.getDay()+6)%7; // Monday=0
-  const today    = new Date().toISOString().slice(0,10);
+  const _tn=new Date(), _tp=n=>String(n).padStart(2,'0');
+  const today    = _tn.getFullYear()+'-'+_tp(_tn.getMonth()+1)+'-'+_tp(_tn.getDate());
 
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
   // Build map of events per day
   const events = {};
-  students.forEach(s => {
-    if(s.intake && s.intake.startsWith(calYear+'-'+String(calMonth+1).padStart(2,'0'))){
-      const d = s.intake.slice(8,10);
-      if(!events[d]) events[d] = {in:[],out:[]};
-      events[d].in.push(s.name);
-    }
-    if(s.date && s.date.startsWith(calYear+'-'+String(calMonth+1).padStart(2,'0'))){
-      const d = s.date.slice(8,10);
-      if(!events[d]) events[d] = {in:[],out:[]};
-      events[d].out.push(s.name);
-    }
-  });
+  for(let d=1;d<=lastDay.getDate();d++){
+    const ds = String(d).padStart(2,'0');
+    const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+ds;
+    const ins=[]; const outs=[]; const active=[];
+    students.forEach(s => {
+      if(s.status==='completado') return;
+      if(s.intake===dateStr) ins.push(s.name);
+      if(s.date===dateStr) outs.push(s.name);
+      if(s.intake && s.intake<=dateStr && (!s.date||s.date>=dateStr) && s.intake!==dateStr && s.date!==dateStr) active.push(s.name);
+    });
+    if(ins.length||outs.length||active.length) events[ds]={in:ins,out:outs,active};
+  }
 
   // Empty cells before first day
   for(let i=0;i<startDow;i++){
@@ -2028,9 +2042,12 @@ function renderCalendar(){
     if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
     else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
 
+    const totalActive = ev.in.length + ev.active.length;
+    if(totalActive>0) dotsHtml += `<span style="font-size:9px;color:var(--muted);margin-left:3px;">${totalActive}</span>`;
+
     let namesHtml = isSun ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
-      const allNames = [...new Set([...ev.in,...ev.out])];
+      const allNames = [...ev.in, ...ev.active, ...ev.out];
       namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${esc(n)}</div>`).join('');
       if(allNames.length>2) namesHtml += `<div style="font-size:9px;color:var(--muted);">+${allNames.length-2} más</div>`;
     }
@@ -2046,27 +2063,32 @@ function renderCalendar(){
 function showCalDay(ds){
   const students = window.getStudents() || [];
   const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+ds;
-  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  
-  const ins  = students.filter(s=>s.intake===dateStr);
-  const outs = students.filter(s=>s.date===dateStr);
-  
-  if(!ins.length && !outs.length){ document.getElementById('calDetail').style.display='none'; return; }
+
+  const ins    = students.filter(s=>s.status!=='completado'&&s.intake===dateStr);
+  const outs   = students.filter(s=>s.status!=='completado'&&s.date===dateStr);
+  const active = students.filter(s=>s.status!=='completado'&&s.intake&&s.intake<dateStr&&(!s.date||s.date>dateStr));
+
+  if(!ins.length && !outs.length && !active.length){ document.getElementById('calDetail').style.display='none'; return; }
 
   const d = new Date(calYear,calMonth,parseInt(ds));
   document.getElementById('calDetailTitle').textContent = d.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  
+
   let html2 = '';
   if(ins.length){
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
-    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.obs?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">📋 '+esc(s.obs.slice(0,40))+'</span>':''}</div>`).join('');
+    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}</div>`).join('');
+  }
+  if(active.length){
+    if(ins.length) html2 += '<div style="height:12px;"></div>';
+    html2 += `<div style="font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;">🐾 Activos (${active.length})</div>`;
+    html2 += active.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}</div>`).join('');
   }
   if(outs.length){
-    if(ins.length) html2 += '<div style="height:12px;"></div>';
+    if(ins.length||active.length) html2 += '<div style="height:12px;"></div>';
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:8px;">🟡 Salen</div>';
-    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+esc(s.time)+'</span>':''}</div>`).join('');
+    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.time)+'</span>':''}</div>`).join('');
   }
-  
+
   document.getElementById('calDetailContent').innerHTML = html2;
   document.getElementById('calDetail').style.display = 'block';
 }
@@ -2279,6 +2301,19 @@ async function confirmApprove(id) {
   const intakes = await window.FB.getIntakes();
   const intake = intakes.find(i => i.id === id);
   if (!intake) return;
+
+  if (intake.intakeDate) {
+    const students = window.getStudents() || [];
+    const ds = intake.intakeDate;
+    const count = students.filter(s =>
+      s.status !== 'completado' && s.intake && s.intake <= ds && (!s.date || s.date >= ds)
+    ).length;
+    if (count >= 15) {
+      const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 15).\n\n¿Quieres aprobar de todas formas?')) return;
+    }
+  }
+
   if (!confirm('¿Aprobar e importar a "' + intake.dogName + '" como estudiante pendiente de confirmación?')) return;
   try {
     await window.FB.approveIntake(id, intake);
