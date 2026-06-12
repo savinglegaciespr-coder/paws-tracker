@@ -2042,8 +2042,13 @@ function renderCalendar(){
     if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
     else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
 
+    const CAP = 15;
     const totalActive = ev.in.length + ev.active.length;
-    if(totalActive>0) dotsHtml += `<span style="font-size:9px;color:var(--muted);margin-left:3px;">${totalActive}</span>`;
+    if(totalActive>0){
+      const pct=totalActive/CAP;
+      const cntColor=pct>=0.8?'var(--red)':pct>=0.5?'var(--yellow)':'var(--muted)';
+      dotsHtml+=`<span style="font-size:9px;color:${cntColor};margin-left:3px;">${totalActive}/${CAP}</span>`;
+    }
 
     let namesHtml = isSun ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
@@ -2073,7 +2078,13 @@ function showCalDay(ds){
   const d = new Date(calYear,calMonth,parseInt(ds));
   document.getElementById('calDetailTitle').textContent = d.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  let html2 = '';
+  const CAP = 15;
+  const totalOcc = ins.length + active.length;
+  const pct = totalOcc / CAP;
+  const occColor = pct >= 0.8 ? 'var(--red)' : pct >= 0.5 ? 'var(--yellow)' : 'var(--green2)';
+  let html2 = totalOcc > 0
+    ? `<div style="font-size:12px;font-weight:700;margin-bottom:12px;padding:8px 12px;background:var(--surface2);border-radius:8px;color:${occColor};">Ocupación del día: ${totalOcc}/${CAP}</div>`
+    : '';
   if(ins.length){
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
     html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}</div>`).join('');
