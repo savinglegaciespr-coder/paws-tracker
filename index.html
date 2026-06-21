@@ -42,7 +42,7 @@
 
   // ── ROLE PERMISSIONS ───────────────────────────────
   const PERMISSIONS = {
-    superadmin:   { students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true  },
+    superadmin:   { students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true,  manageUsers: true  },
     businessowner:{ students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true  },
     admin:        { students: true,  studentsEdit: true,  logs: false, export: true,  delete: false, users: false },
     trainer:      { students: false, studentsEdit: false, logs: true,  export: false, delete: false, users: false },
@@ -884,7 +884,7 @@
     <div class="stats-row" id="statsRow"></div>
 
     <!-- Users Management Panel -->
-    <div class="users-panel" id="usersPanel" data-perm="users" style="display:none;">
+    <div class="users-panel" id="usersPanel" data-perm="manageUsers" style="display:none;">
       <h3>👥 Gestión de usuarios</h3>
       <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--blue);color:var(--blue);margin-bottom:12px;" onclick="loadUsers()">🔄 Cargar usuarios</button>
       <div id="usersList"><p style="color:var(--muted);font-size:13px;">Click "Cargar usuarios" para ver la lista.</p></div>

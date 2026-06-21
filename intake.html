@@ -401,7 +401,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref, uploadBytesResumable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
   const firebaseConfig = {
@@ -501,9 +501,18 @@
     } catch(e) { console.error('Email negocio FALLÓ:', e.code, e.message, e); }
   };
 
-  window.loadAvailability = async () => {
-    const snap = await getDoc(doc(db, 'public', 'availability'));
-    return snap.exists() ? (snap.data().slots || []) : [];
+  let _unsubAvailability = null;
+
+  window.loadAvailability = (onUpdate) => {
+    if (_unsubAvailability) _unsubAvailability();
+    _unsubAvailability = onSnapshot(doc(db, 'public', 'availability'), (snap) => {
+      const slots = snap.exists() ? (snap.data().slots || []) : [];
+      onUpdate(slots);
+    });
+  };
+
+  window.unsubAvailability = () => {
+    if (_unsubAvailability) { _unsubAvailability(); _unsubAvailability = null; }
   };
 </script>
 
@@ -789,18 +798,27 @@
     renderIntakeCal();
   }
 
-  async function loadCalendar() {
+  function loadCalendar() {
     const wrap = document.getElementById('intakeCalWrap');
     wrap.innerHTML = '<div class="ical-loading">Verificando disponibilidad...</div>';
     try {
-      _calSlots = await window.loadAvailability();
       const now = new Date();
       _calYear  = now.getFullYear();
       _calMonth = now.getMonth();
       _calSelectedDate = document.getElementById('intakeDate').value || '';
-      renderIntakeCal();
+      window.loadAvailability((slots) => {
+        _calSlots = slots;
+        // Si la fecha seleccionada ya no está disponible, limpiarla
+        if (_calSelectedDate) {
+          const occ = _occupancyMap(_calSlots)[_calSelectedDate] || 0;
+          if (occ >= 15) {
+            _calSelectedDate = '';
+            document.getElementById('intakeDate').value = '';
+          }
+        }
+        renderIntakeCal();
+      });
     } catch (e) {
-      // Fallback: mostrar input de fecha original
       wrap.innerHTML = '<input type="date" id="intakeDateFallback" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:\'Nunito\',sans-serif;font-size:14px;padding:10px 12px;width:100%;" oninput="document.getElementById(\'intakeDate\').value=this.value;markError(\'intakeDate\',!this.value)"/>';
     }
   }
@@ -851,6 +869,7 @@
         parasiteFileURL: fileURLs.parasite || '',
       };
       await window.saveIntake(data);
+      if (window.unsubAvailability) window.unsubAvailability();
       document.getElementById('intakeForm').style.display='none';
       document.getElementById('stepIndicator').style.display='none';
       document.getElementById('progressBar').style.display='none';
