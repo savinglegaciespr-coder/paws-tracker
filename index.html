@@ -1007,6 +1007,12 @@
       <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--green);margin-bottom:12px;" id="calDetailTitle"></div>
       <div id="calDetailContent"></div>
     </div>
+
+    <!-- Upcoming availability -->
+    <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--blue);font-weight:700;margin-bottom:12px;">📅 Próximas fechas disponibles</div>
+      <div id="calUpcoming"></div>
+    </div>
   </div>
 
 </div>
@@ -2063,6 +2069,7 @@ function renderCalendar(){
       ${namesHtml}
     </div>`;
   }
+  renderUpcoming();
 }
 
 function showCalDay(ds){
@@ -2102,6 +2109,45 @@ function showCalDay(ds){
 
   document.getElementById('calDetailContent').innerHTML = html2;
   document.getElementById('calDetail').style.display = 'block';
+}
+
+function renderUpcoming() {
+  const el = document.getElementById('calUpcoming');
+  if (!el) return;
+  const students = window.getStudents() || [];
+  const CAP = 15;
+  const _tp = n => String(n).padStart(2,'0');
+  const results = [];
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() + 1);
+  for (let i = 0; i < 120 && results.length < 10; i++) {
+    if (cursor.getDay() !== 0) { // skip Sundays
+      const ds = cursor.getFullYear()+'-'+_tp(cursor.getMonth()+1)+'-'+_tp(cursor.getDate());
+      let count = 0;
+      students.forEach(s => {
+        if (s.status === 'completado' || !s.intake) return;
+        const isIn  = s.intake === ds;
+        const isOut = s.date === ds;
+        const isActive = s.intake < ds && (!s.date || s.date > ds);
+        if (isIn || isActive) count++;
+      });
+      if (count < CAP) results.push({ ds, spaces: CAP - count });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  if (!results.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No hay fechas disponibles en los próximos 120 días.</p>';
+    return;
+  }
+  el.innerHTML = results.map(r => {
+    const [y,m,d] = r.ds.split('-');
+    const label = new Date(+y,+m-1,+d).toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short'});
+    const color = r.spaces >= 8 ? 'var(--green2)' : r.spaces >= 4 ? 'var(--yellow)' : 'var(--red)';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;">
+      <span style="font-size:13px;font-weight:600;">${label}</span>
+      <span style="font-size:12px;color:${color};font-weight:700;">${r.spaces} espacio${r.spaces===1?'':'s'}</span>
+    </div>`;
+  }).join('');
 }
 
 function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
