@@ -981,26 +981,28 @@
         <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;padding:6px 14px;" onclick="calPrevMonth()">‹</button>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--green);" id="calTitle">—</div>
         <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;padding:6px 14px;" onclick="calNextMonth()">›</button>
+        <button id="calToggleBtn" class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:13px;padding:6px 12px;" onclick="toggleCalGrid()">∧</button>
       </div>
-      <div style="display:flex;gap:12px;font-size:11px;flex-wrap:wrap;">
+      <div id="calLegend" style="display:flex;gap:12px;font-size:11px;flex-wrap:wrap;">
         <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--green);border-radius:50%;display:inline-block;"></span> Ingreso</span>
         <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--yellow);border-radius:50%;display:inline-block;"></span> Salida</span>
         <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--red);border-radius:50%;display:inline-block;"></span> 3+ salidas</span>
       </div>
     </div>
 
-    <!-- Day headers -->
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Lun</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mar</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mié</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Jue</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Vie</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Sáb</div>
-      <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Dom</div>
+    <div id="calGridWrap">
+      <!-- Day headers -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Lun</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mar</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Mié</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Jue</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Vie</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Sáb</div>
+        <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px;">Dom</div>
+      </div>
+      <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
     </div>
-
-    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
 
     <!-- Day detail popup -->
     <div id="calDetail" style="display:none;margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">
@@ -2150,6 +2152,26 @@ function renderUpcoming() {
   }).join('');
 }
 
+function toggleCalGrid() {
+  const wrap = document.getElementById('calGridWrap');
+  const legend = document.getElementById('calLegend');
+  const btn = document.getElementById('calToggleBtn');
+  const detail = document.getElementById('calDetail');
+  const expanded = wrap.style.display !== 'none';
+  wrap.style.display = expanded ? 'none' : '';
+  legend.style.display = expanded ? 'none' : '';
+  detail.style.display = 'none';
+  btn.textContent = expanded ? '∨' : '∧';
+  localStorage.setItem('calExpanded', expanded ? '0' : '1');
+}
+function _restoreCalState() {
+  if (localStorage.getItem('calExpanded') === '0') {
+    const wrap = document.getElementById('calGridWrap');
+    const legend = document.getElementById('calLegend');
+    const btn = document.getElementById('calToggleBtn');
+    if (wrap) { wrap.style.display = 'none'; legend.style.display = 'none'; btn.textContent = '∨'; }
+  }
+}
 function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 window.renderCalendar = renderCalendar;
@@ -2413,7 +2435,7 @@ function switchTab(el,name){
   const panel = document.getElementById('panel-'+name);
   panel.classList.add('active', dir);
   el.classList.add('active');
-  if(name==='calendario') renderCalendar();
+  if(name==='calendario'){ renderCalendar(); _restoreCalState(); }
   if(name==='solicitudes') loadIntakes();
 }
 window.switchTab = switchTab;
