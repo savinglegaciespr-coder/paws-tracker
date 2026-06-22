@@ -1198,11 +1198,19 @@ function fmtTime(t){ if(!t)return'—'; const[h,m]=t.split(':').map(Number); ret
 function fmtDate(d){ if(!d)return'<span style="color:var(--muted)">—</span>'; return new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'}); }
 
 function sortStudents(arr) {
+  const _now = new Date();
+  const _pad = n => String(n).padStart(2,'0');
+  const todayStr    = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
+  const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
+  const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
   return [...arr].sort((a, b) => {
     const isComp = s => s.status === 'completado';
     if (isComp(a) && !isComp(b)) return 1;
     if (!isComp(a) && isComp(b)) return -1;
     if (isComp(a) && isComp(b)) return 0;
+    const exitPriority = s => s.date === todayStr ? 0 : s.date === tomorrowStr ? 1 : 2;
+    const pa = exitPriority(a), pb = exitPriority(b);
+    if (pa !== pb) return pa - pb;
     if (!a.intake && !b.intake) {}
     else if (!a.intake) return 1;
     else if (!b.intake) return -1;
