@@ -58,6 +58,7 @@
   let unsubLogs = null;
   let unsubIntakes = null;
   let _knownIntakeIds = null; // null = primera carga, no notificar
+  let _studentFilter = 'todos';
 
   function _updateAppBadge(count) {
     if (!('setAppBadge' in navigator)) return;
@@ -921,6 +922,7 @@
     <div class="table-wrap">
       <div style="margin-bottom:12px;">
         <input type="text" id="searchDog" placeholder="🔍 Buscar por nombre..." oninput="renderStudents()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Nunito',sans-serif;font-size:13px;padding:9px 14px;width:100%;box-sizing:border-box;"/>
+        <div id="filterChips" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
       </div>
       <table>
         <thead><tr><th>#</th><th>Nombre</th><th>Fecha ingreso</th><th>Días</th><th>Fecha salida</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -1259,8 +1261,29 @@ function renderStudents(){
   const chips={ activo:'<span class="chip chip-green">● Activo</span>', salida_hoy:'<span class="chip chip-yellow">● Salida hoy</span>', completado:'<span class="chip chip-gray">● Completado</span>', pendiente:'<span class="chip chip-red">● Pendiente</span>' };
   const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
   const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
+  const cntHoy     = students.filter(s=>s.date===todayStr&&s.status!=='completado').length;
+  const cntManana  = students.filter(s=>s.date===tomorrowStr&&s.status!=='completado').length;
+  const cntActivos = students.filter(s=>s.status==='activo').length;
+  const chipsEl = document.getElementById('filterChips');
+  if(chipsEl){
+    const chipDefs=[
+      {key:'todos',   label:'Todos',              count:null,       border:'var(--green)',  bg:'var(--surface2)', color:'var(--green)'},
+      {key:'hoy',     label:'Salen hoy',          count:cntHoy,     border:'var(--yellow)', bg:'#f5c84222',       color:'var(--yellow)'},
+      {key:'manana',  label:'Salen mañana',        count:cntManana,  border:'var(--blue)',   bg:'#5b9cf622',       color:'var(--blue)'},
+      {key:'activos', label:'Activos esta semana', count:cntActivos, border:'var(--green2)', bg:'#6db33f22',       color:'var(--green2)'},
+    ];
+    chipsEl.innerHTML=chipDefs.map(c=>{
+      const isActive=_studentFilter===c.key;
+      const label=c.count!==null?`${c.label} (${c.count})`:c.label;
+      return `<button onclick="setStudentFilter('${c.key}')" style="background:${isActive?c.bg:'var(--surface)'};border:1px solid ${isActive?c.border:'var(--border)'};color:${isActive?c.color:'var(--muted)'};border-radius:20px;padding:5px 14px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;">${label}</button>`;
+    }).join('');
+  }
   const sorted = sortStudents(students);
-  const display = searchTerm ? sorted.filter(s => s.name.toLowerCase().includes(searchTerm)) : sorted;
+  let filtered = sorted;
+  if(_studentFilter==='hoy')     filtered=sorted.filter(s=>s.date===todayStr&&s.status!=='completado');
+  else if(_studentFilter==='manana')  filtered=sorted.filter(s=>s.date===tomorrowStr&&s.status!=='completado');
+  else if(_studentFilter==='activos') filtered=sorted.filter(s=>s.status==='activo');
+  const display = searchTerm ? filtered.filter(s => s.name.toLowerCase().includes(searchTerm)) : filtered;
   if(!display.length){ tbody.innerHTML=''; document.getElementById('emptyMsgText').textContent='No se encontraron perros con ese nombre.'; empty.style.display='block'; return; }
   empty.style.display='none';
   if(document.getElementById('totalCount')) document.getElementById('totalCount').textContent=display.length+' PERRO'+(display.length!==1?'S':'');
@@ -1312,6 +1335,9 @@ function renderStudents(){
   updateDogSelects();
 }
 window.renderStudents = renderStudents; // assign immediately after definition
+
+function setStudentFilter(f) { _studentFilter = f; renderStudents(); }
+window.setStudentFilter = setStudentFilter;
 
 // ── CALCULATE DOG AGE ────────────────────────────────────────
 function calcAge(dob){
