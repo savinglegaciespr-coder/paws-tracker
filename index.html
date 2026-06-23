@@ -58,7 +58,6 @@
   let unsubLogs = null;
   let unsubIntakes = null;
   let _knownIntakeIds = null; // null = primera carga, no notificar
-  let _studentFilter = 'todos';
 
   function _updateAppBadge(count) {
     if (!('setAppBadge' in navigator)) return;
@@ -2027,6 +2026,8 @@ function exportDogReport(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   flash('Reporte de '+s.name+' descargado.');
 }
+
+let _studentFilter = 'todos';
 
 // ── CALENDAR ────────────────────────────────────────
 let calYear  = new Date().getFullYear();
