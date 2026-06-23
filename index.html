@@ -2044,7 +2044,7 @@ function renderCalendar(){
   for(let d=1;d<=lastDay.getDate();d++){
     const ds = String(d).padStart(2,'0');
     const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+ds;
-    const ev = events[ds] || {in:[],out:[]};
+    const ev = events[ds] || {in:[],out:[],active:[]};
     const isToday = dateStr === today;
     const isSun = (new Date(calYear,calMonth,d).getDay()===0);
 
