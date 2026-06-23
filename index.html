@@ -2178,14 +2178,6 @@ function toggleCalGrid() {
   btn.textContent = expanded ? '∨' : '∧';
   localStorage.setItem('calExpanded', expanded ? '0' : '1');
 }
-function _restoreCalState() {
-  if (localStorage.getItem('calExpanded') === '0') {
-    const wrap = document.getElementById('calGridWrap');
-    const legend = document.getElementById('calLegend');
-    const btn = document.getElementById('calToggleBtn');
-    if (wrap) { wrap.style.display = 'none'; legend.style.display = 'none'; btn.textContent = '∨'; }
-  }
-}
 function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); document.getElementById('calDetail').style.display='none'; }
 window.renderCalendar = renderCalendar;
@@ -2449,7 +2441,7 @@ function switchTab(el,name){
   const panel = document.getElementById('panel-'+name);
   panel.classList.add('active', dir);
   el.classList.add('active');
-  if(name==='calendario'){ renderCalendar(); _restoreCalState(); }
+  if(name==='calendario') renderCalendar();
   if(name==='solicitudes') loadIntakes();
 }
 window.switchTab = switchTab;
