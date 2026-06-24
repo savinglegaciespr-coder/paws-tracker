@@ -705,7 +705,7 @@
         // Un perro ocupa desde su intake hasta su date (inclusive)
         // Disponible al día SIGUIENTE de su salida
         const after = s.intake <= ds;
-        const before = !s.date || s.date >= ds;
+        const before = !s.date || s.date > ds;
         if (after && before) count++;
       });
       map[ds] = count;
