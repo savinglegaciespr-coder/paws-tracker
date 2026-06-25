@@ -755,6 +755,9 @@
       else if (available) cls += ' available';
       else cls += ' past';
 
+      const spaces = count !== null ? CAL_MAX - count : null;
+      const lowSpaces = available && spaces !== null && spaces <= 5;
+      if (lowSpaces) sub = `<span class="ical-sub" style="color:var(--yellow);">${spaces} disp.</span>`;
       const click = available ? `onclick="selectIntakeDate('${ds}')"` : '';
       gridHtml += `<div class="${cls}" ${click}><span>${d}</span>${sub}</div>`;
     }
