@@ -674,7 +674,7 @@
   function prevStep(step){ if(step>1) showStep(step-1); }
 
   // ── CALENDARIO DE DISPONIBILIDAD ──────────────────────────────
-  const CAL_MAX = 15;
+  const CAL_MAX = 17;
   let _calSlots = null;
   let _calYear = null;
   let _calMonth = null;
@@ -702,7 +702,7 @@
         // Un perro ocupa desde su intake hasta su date (inclusive)
         // Disponible al día SIGUIENTE de su salida
         const after = s.intake <= ds;
-        const before = !s.date || s.date > ds;
+        const before = !s.date || s.date >= ds;
         if (after && before) count++;
       });
       map[ds] = count;
@@ -736,17 +736,19 @@
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const ds = _dateStr(_calYear, _calMonth, d);
       const dow = new Date(_calYear, _calMonth, d).getDay(); // 0=dom
-      const isSun = dow === 0;
+      const isClosed = dow === 0 || dow === 6; // domingo o sábado
+      const isFri = dow === 5;
       const isPast = ds <= todayStr;
       const count = occMap[ds] !== undefined ? occMap[ds] : null;
       const isFull = count !== null && count >= CAL_MAX;
       const isSelected = ds === _calSelectedDate;
-      const available = !isSun && !isPast && count !== null && !isFull;
+      const available = !isClosed && !isFri && !isPast && count !== null && !isFull;
 
       let cls = 'ical-day';
       let sub = '';
       if (isSelected) cls += ' selected';
-      else if (isSun)  { cls += ' closed'; sub = '<span class="ical-sub">Cerrado</span>'; }
+      else if (isClosed) { cls += ' closed'; sub = '<span class="ical-sub">Cerrado</span>'; }
+      else if (isFri) cls += ' past';
       else if (isPast) cls += ' past';
       else if (isFull) { cls += ' full'; sub = '<span class="ical-sub">Lleno</span>'; }
       else if (available) cls += ' available';
@@ -811,7 +813,7 @@
         // Si la fecha seleccionada ya no está disponible, limpiarla
         if (_calSelectedDate) {
           const occ = _occupancyMap(_calSlots)[_calSelectedDate] || 0;
-          if (occ >= 15) {
+          if (occ >= 17) {
             _calSelectedDate = '';
             document.getElementById('intakeDate').value = '';
           }

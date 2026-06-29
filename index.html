@@ -370,10 +370,10 @@
   function calcExitFromIntake(intakeDateStr, weeks) {
     const w = parseInt(weeks);
     if (!intakeDateStr || !w || w < 1) return '';
-    let days = w * 6;
+    let days = w * 5 + 1;
     let d = new Date(intakeDateStr + 'T12:00:00');
     let added = 0;
-    while (added < days) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0) added++; }
+    while (added < days) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) added++; }
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
 
@@ -1361,7 +1361,7 @@ function countDaysIn(intakeStr){
   if(d >= now) return 0;
   let count = 0;
   d.setDate(d.getDate()+1);
-  while(d <= now){ if(d.getDay()!==0) count++; d.setDate(d.getDate()+1); }
+  while(d <= now){ if(d.getDay()!==0 && d.getDay()!==6) count++; d.setDate(d.getDate()+1); }
   return count;
 }
 
@@ -1370,12 +1370,12 @@ function calcExitDate(intakeId, weeksId, dateId){
   const intakeVal = document.getElementById(intakeId).value;
   const weeksVal  = parseInt(document.getElementById(weeksId).value);
   if(!intakeVal || !weeksVal || weeksVal < 1) return;
-  let days = weeksVal * 6;
+  let days = weeksVal * 5 + 1;
   let date = new Date(intakeVal + 'T12:00:00');
   let added = 0;
   while(added < days){
     date.setDate(date.getDate() + 1);
-    if(date.getDay() !== 0){ added++; }
+    if(date.getDay() !== 0 && date.getDay() !== 6){ added++; }
   }
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
@@ -2074,6 +2074,8 @@ function renderCalendar(){
     const ev = events[ds] || {in:[],out:[],active:[]};
     const isToday = dateStr === today;
     const isSun = (new Date(calYear,calMonth,d).getDay()===0);
+    const isSat = (new Date(calYear,calMonth,d).getDay()===6);
+    const isClosed = isSun || isSat;
 
     let dotColor = '';
     if(ev.out.length >= 3) dotColor = 'var(--red)';
@@ -2082,24 +2084,24 @@ function renderCalendar(){
 
     const hasEvents = ev.in.length || ev.out.length;
     const cursor = hasEvents ? 'pointer' : 'default';
-    const bg = isToday ? 'var(--surface2)' : isSun ? '#1a1a1a' : 'var(--surface)';
+    const bg = isToday ? 'var(--surface2)' : isClosed ? '#1a1a1a' : 'var(--surface)';
     const border = isToday ? '1px solid var(--green)' : '1px solid var(--border)';
-    const dayCol = isSun ? 'var(--muted)' : 'var(--text)';
+    const dayCol = isClosed ? 'var(--muted)' : 'var(--text)';
 
     let dotsHtml = '';
     if(ev.in.length)  dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin:0 1px;"></span>`;
     if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
     else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
 
-    const CAP = 15;
-    const totalActive = ev.in.length + ev.active.length;
+    const CAP = 17;
+    const totalActive = ev.in.length + ev.active.length + ev.out.length;
     if(totalActive>0){
       const pct=totalActive/CAP;
       const cntColor=pct>=0.8?'var(--red)':pct>=0.5?'var(--yellow)':'var(--muted)';
       dotsHtml+=`<span style="font-size:9px;color:${cntColor};margin-left:3px;">${totalActive}/${CAP}</span>`;
     }
 
-    let namesHtml = isSun ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
+    let namesHtml = isClosed ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
       const allNames = [...ev.in, ...ev.active, ...ev.out];
       namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${esc(n)}</div>`).join('');
@@ -2128,8 +2130,8 @@ function showCalDay(ds){
   const d = new Date(calYear,calMonth,parseInt(ds));
   document.getElementById('calDetailTitle').textContent = d.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  const CAP = 15;
-  const totalOcc = ins.length + active.length;
+  const CAP = 17;
+  const totalOcc = ins.length + active.length + outs.length;
   const pct = totalOcc / CAP;
   const occColor = pct >= 0.8 ? 'var(--red)' : pct >= 0.5 ? 'var(--yellow)' : 'var(--green2)';
   let html2 = totalOcc > 0
@@ -2158,21 +2160,22 @@ function renderUpcoming() {
   const el = document.getElementById('calUpcoming');
   if (!el) return;
   const students = window.getStudents() || [];
-  const CAP = 15;
+  const CAP = 17;
   const _tp = n => String(n).padStart(2,'0');
   const results = [];
   const cursor = new Date();
   cursor.setDate(cursor.getDate() + 1);
   for (let i = 0; i < 120 && results.length < 10; i++) {
-    if (cursor.getDay() !== 0) { // skip Sundays
+    const dow = cursor.getDay();
+    if (dow !== 0 && dow !== 6 && dow !== 5) { // solo lun–jue como días válidos de entrada
       const ds = cursor.getFullYear()+'-'+_tp(cursor.getMonth()+1)+'-'+_tp(cursor.getDate());
       let count = 0;
       students.forEach(s => {
         if (s.status === 'completado' || !s.intake) return;
         const isIn  = s.intake === ds;
         const isOut = s.date === ds;
-        const isActive = s.intake < ds && (!s.date || s.date > ds);
-        if (isIn || isActive) count++;
+        const isActive = s.intake < ds && (!s.date || s.date >= ds);
+        if (isIn || isActive || isOut) count++;
       });
       if (count < CAP) results.push({ ds, spaces: CAP - count });
     }
@@ -2425,9 +2428,9 @@ async function confirmApprove(id) {
     const count = students.filter(s =>
       s.status !== 'completado' && s.intake && s.intake <= ds && (!s.date || s.date >= ds)
     ).length;
-    if (count >= 15) {
+    if (count >= 17) {
       const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-      if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 15).\n\n¿Quieres aprobar de todas formas?')) return;
+      if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 17).\n\n¿Quieres aprobar de todas formas?')) return;
     }
   }
 
