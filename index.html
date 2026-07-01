@@ -45,7 +45,7 @@
     superadmin:   { students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true,  manageUsers: true  },
     businessowner:{ students: true,  studentsEdit: true,  logs: true,  export: true,  delete: true,  users: true  },
     admin:        { students: true,  studentsEdit: true,  logs: false, export: true,  delete: false, users: false },
-    trainer:      { students: false, studentsEdit: false, logs: true,  export: false, delete: false, users: false },
+    trainer:      { students: true,  studentsEdit: false, logs: true,  export: false, delete: false, users: false },
     operator:     { students: true,  studentsEdit: false, logs: false, export: false, delete: false, users: false },
   };
 
@@ -322,10 +322,10 @@
       const bitTab = document.querySelector('[data-tab="bitacora"]');
       if(bitTab) bitTab.style.display = 'none';
     }
-    // Trainer: show only bitácora tab and redirect there
+    // Trainer: show only bitácora + estudiantes tabs, land on bitácora
     if (currentRole === 'trainer') {
       document.querySelectorAll('.tab').forEach(t => {
-        if (t.dataset.tab !== 'bitacora') t.style.display = 'none';
+        if (t.dataset.tab !== 'bitacora' && t.dataset.tab !== 'estudiantes') t.style.display = 'none';
       });
       setTimeout(() => {
         const bitTab = document.querySelector('[data-tab="bitacora"]');
@@ -465,6 +465,28 @@
       if (window.renderLogs) window.renderLogs();
     }
   });
+
+  // Prevent horizontal overscroll from propagating to page vertical scroll (iOS Safari)
+  (function() {
+    const wrap = document.getElementById('calGridWrap');
+    if (!wrap) return;
+    let _tx = 0, _ty = 0;
+    wrap.addEventListener('touchstart', e => {
+      _tx = e.touches[0].clientX;
+      _ty = e.touches[0].clientY;
+    }, { passive: true });
+    wrap.addEventListener('touchmove', e => {
+      const dx = Math.abs(e.touches[0].clientX - _tx);
+      const dy = Math.abs(e.touches[0].clientY - _ty);
+      if (dx > dy && dx > 5) {
+        const atStart = wrap.scrollLeft <= 0;
+        const atEnd   = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 1;
+        const goingLeft  = e.touches[0].clientX > _tx;
+        const goingRight = e.touches[0].clientX < _tx;
+        if ((atStart && goingLeft) || (atEnd && goingRight)) e.preventDefault();
+      }
+    }, { passive: false });
+  })();
 </script>
 <style>
 
@@ -529,6 +551,8 @@
   .tab.active { color: var(--green); border-bottom-color: var(--green); }
   .tab:hover:not(.active) { color: var(--white); }
 
+  @media(max-width:600px){ header { padding: 12px 14px; } .tabs { padding: 0 14px; } }
+  @media(max-width:600px){ body { overflow-x: hidden; } #calGridWrap { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; } #calGridWrap > div { min-width: 560px; } }
   main { padding: 20px 14px; max-width: 1000px; margin: 0 auto; }
   @media(min-width:600px){ main { padding: 28px; } }
   .panel { display: none; }
@@ -1726,7 +1750,7 @@ function getExportRange(){
   const y = parseInt(document.getElementById('exportYear').value);
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const start = new Date(y, m, 1);
-  const end   = new Date(y, m+1, 0);
+  const end   = new Date(y, m+1, 0, 23, 59, 59);
   const students=window.getStudents()||[]; const logs=window.getLogs()||[];
   // Filter students active during the month
   const sortStudents = arr => [...arr].sort((a,b) => {
@@ -1804,7 +1828,8 @@ function runExportCSV(){
 }
 
 function runExportPDF(){
-  const {monthName, y, filtStudents, filtLogs} = getExportRange();
+  const {monthName, y, filtStudents: _allStudents, filtLogs} = getExportRange();
+  const filtStudents = _allStudents.filter(s => s.status !== 'completado');
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const green = [109,179,63];
@@ -1816,6 +1841,15 @@ function runExportPDF(){
   const statusLabel = {activo:'Activo',salida_hoy:'Salida hoy',completado:'Completado',pendiente:'Pendiente'};
   const actLabel = {caminata:'Caminata estructurada',piso:'Entrenamiento de piso'};
   const daysIn = s => {
+    if(!s.intake) return '—';
+    if(s.status === 'completado' && s.date){
+      let d = new Date(s.intake+'T12:00:00');
+      const exitD = new Date(s.date+'T12:00:00');
+      let count = 0;
+      d.setDate(d.getDate()+1);
+      while(d < exitD){ if(d.getDay()!==0 && d.getDay()!==6) count++; d.setDate(d.getDate()+1); }
+      return count+'d';
+    }
     const d = countDaysIn(s.intake);
     return d === null ? '—' : d+'d';
   };
