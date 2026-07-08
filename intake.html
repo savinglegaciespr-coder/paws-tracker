@@ -125,7 +125,7 @@
     <h1>Registro Oficial</h1>
     <p>Completa el siguiente formulario para solicitar un espacio para tu mascota.<br/>Nos comunicaremos contigo en un máximo de 24 horas para confirmar disponibilidad.</p>
   </div>
-  <div class="step-indicator" id="stepIndicator">Paso 1 de 6</div>
+  <div class="step-indicator" id="stepIndicator">Paso 1 de 7</div>
   <div class="progress-wrap" id="progressBar">
     <div class="progress-step active" id="ps1"></div>
     <div class="progress-step" id="ps2"></div>
@@ -133,12 +133,38 @@
     <div class="progress-step" id="ps4"></div>
     <div class="progress-step" id="ps5"></div>
     <div class="progress-step" id="ps6"></div>
+    <div class="progress-step" id="ps7"></div>
   </div>
 
   <form id="intakeForm" novalidate>
 
-    <!-- PASO 1: Contacto -->
+    <!-- PASO 1: Estadía y Fecha -->
     <div class="form-section active" id="step1">
+      <div class="section-title">Estadía</div>
+      <div class="section-sub">Selecciona primero las semanas y luego la fecha de ingreso</div>
+      <div class="field-grid">
+        <div class="field" id="f-weeks">
+          <label>Semanas de estadía estimadas<span class="req">*</span></label>
+          <select id="weeks">
+            <option value="">-- Seleccionar --</option>
+            <option value="1">1 semana</option>
+            <option value="2">2 semanas</option>
+          </select>
+          <span class="error-msg">Selecciona las semanas</span>
+        </div>
+        <div class="field full" id="f-intakeDate">
+          <label>Fecha de ingreso deseada<span class="req">*</span></label>
+          <input type="hidden" id="intakeDate"/>
+          <div id="intakeCalWrap"><div class="ical-loading">Cargando disponibilidad...</div></div>
+          <span class="error-msg">Selecciona una fecha</span>
+        </div>
+        <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
+      </div>
+      <div class="form-nav"><button type="button" class="btn btn-primary" onclick="nextStep(1)">Continuar →</button></div>
+    </div>
+
+    <!-- PASO 2: Contacto -->
+    <div class="form-section" id="step2">
       <div class="section-title">Información de Contacto</div>
       <div class="section-sub">Datos del dueño de la mascota</div>
       <div class="field-grid">
@@ -148,11 +174,14 @@
         <div class="field"><label>Teléfono alterno</label><input type="tel" id="phone2" placeholder="787-000-0000"/></div>
         <div class="field full" id="f-email"><label>Correo electrónico<span class="req">*</span></label><input type="email" id="email" placeholder="tu@email.com"/><span class="error-msg">Ingresa un correo válido</span></div>
       </div>
-      <div class="form-nav"><button type="button" class="btn btn-primary" onclick="nextStep(1)">Continuar →</button></div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(2)">Continuar →</button>
+      </div>
     </div>
 
-    <!-- PASO 2: Mascota -->
-    <div class="form-section" id="step2">
+    <!-- PASO 3: Mascota -->
+    <div class="form-section" id="step3">
       <div class="section-title">Información de la Mascota</div>
       <div class="section-sub">Datos del perro</div>
       <div class="field-grid">
@@ -187,13 +216,13 @@
         </div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(2)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 3: Salud -->
-    <div class="form-section" id="step3">
+    <!-- PASO 4: Salud -->
+    <div class="form-section" id="step4">
       <div class="section-title">Salud y Cuidados</div>
       <div class="section-sub">Información médica de la mascota</div>
       <div class="field-grid single">
@@ -202,13 +231,13 @@
         <div class="field"><label>Rutina de ejercicios habitual</label><textarea id="exercise" placeholder="Ej: Caminata de 30 minutos dos veces al día..."></textarea></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(4)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 4: Alimentación -->
-    <div class="form-section" id="step4">
+    <!-- PASO 5: Alimentación -->
+    <div class="form-section" id="step5">
       <div class="section-title">Alimentación</div>
       <div class="section-sub">Hábitos y preferencias alimentarias</div>
       <div class="field-grid single">
@@ -217,13 +246,13 @@
         <div class="field"><label>Restricciones alimentarias</label><textarea id="foodRestrictions" placeholder="Ej: Sin pollo, sin granos..."></textarea></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(4)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(5)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 5: Temperamento y Veterinario -->
-    <div class="form-section" id="step5">
+    <!-- PASO 6: Temperamento y Veterinario -->
+    <div class="form-section" id="step6">
       <div class="section-title">Temperamento y Comportamiento</div>
       <div class="section-sub">Información crítica de seguridad — todos los campos son requeridos</div>
       <div class="field-grid single">
@@ -291,13 +320,13 @@
         <div class="field" id="f-emergencyPhone"><label>Teléfono de emergencia<span class="req">*</span></label><input type="tel" id="emergencyPhone" placeholder="787-000-0000"/><span class="error-msg">Este campo es requerido</span></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(5)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(6)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(6)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 6: Documentos, Estadía y Declaración -->
-    <div class="form-section" id="step6">
+    <!-- PASO 7: Documentos y Declaración -->
+    <div class="form-section" id="step7">
       <div class="section-title">Documentos de Salud</div>
       <div class="section-sub">Evidencia requerida — formatos aceptados: JPG, PNG, PDF (máx. 5MB)</div>
       <div class="field-grid single">
@@ -344,28 +373,6 @@
         </div>
       </div>
 
-      <div style="height:20px;"></div>
-      <div class="section-title">Estadía</div>
-      <div class="section-sub" style="margin-bottom:14px;">Selecciona primero las semanas y luego la fecha de ingreso</div>
-      <div class="field-grid">
-        <div class="field" id="f-weeks">
-          <label>Semanas de estadía estimadas<span class="req">*</span></label>
-          <select id="weeks">
-            <option value="">-- Seleccionar --</option>
-            <option value="1">1 semana</option>
-            <option value="2">2 semanas</option>
-          </select>
-          <span class="error-msg">Selecciona las semanas</span>
-        </div>
-        <div class="field full" id="f-intakeDate">
-          <label>Fecha de ingreso deseada<span class="req">*</span></label>
-          <input type="hidden" id="intakeDate"/>
-          <div id="intakeCalWrap"><div class="ical-loading">Cargando disponibilidad...</div></div>
-          <span class="error-msg">Selecciona una fecha</span>
-        </div>
-        <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
-      </div>
-
       <div style="margin-top:20px;">
         <label style="margin-bottom:10px;display:block;">Declaración de responsabilidad<span class="req">*</span></label>
         <div class="decl-wrap">
@@ -380,7 +387,7 @@
       </div>
 
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(6)">← Atrás</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(7)">← Atrás</button>
         <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar solicitud ✓</button>
       </div>
     </div>
@@ -515,7 +522,7 @@
 
 <script>
   let currentStep = 1;
-  const totalSteps = 6;
+  const totalSteps = 7;
   const files = { vaccine: null, parasite: null };
   const fileURLs = { vaccine: null, parasite: null };
 
@@ -534,7 +541,7 @@
     document.getElementById('step'+step).classList.add('active');
     currentStep=step; updateProgress(step);
     window.scrollTo({top:0,behavior:'smooth'});
-    if (step === 6) loadCalendar();
+    if (step === 1) loadCalendar();
   }
 
   function toggleConditional(id,show) {
@@ -608,6 +615,12 @@
   function validateStep(step) {
     let valid=true;
     if(step===1) {
+      const date=document.getElementById('intakeDate').value;
+      const weeks=document.getElementById('weeks').value;
+      markError('intakeDate',!date); if(!date) valid=false;
+      markError('weeks',!weeks);     if(!weeks) valid=false;
+    }
+    if(step===2) {
       const name=document.getElementById('ownerName').value.trim();
       const addr=document.getElementById('address').value.trim();
       const ph=document.getElementById('phone1').value.trim();
@@ -618,7 +631,7 @@
       const emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
       markError('email',!emailOk);  if(!emailOk) valid=false;
     }
-    if(step===2) {
+    if(step===3) {
       const dog=document.getElementById('dogName').value.trim();
       const breed=document.getElementById('breed').value.trim();
       const sex=getRadio('sex'); const neut=getRadio('neutered'); const vacc=getRadio('vaccines');
@@ -628,13 +641,13 @@
       const ne=document.getElementById('neutered-err'); if(!neut){ne.style.display='block';valid=false;}else{ne.style.display='none';}
       const ve=document.getElementById('vaccines-err'); if(!vacc){ve.style.display='block';valid=false;}else{ve.style.display='none';}
     }
-    if(step===4) {
+    if(step===5) {
       const food=document.getElementById('food').value.trim();
       const freq=document.getElementById('feedingSchedule').value.trim();
       markError('food',!food);            if(!food) valid=false;
       markError('feedingSchedule',!freq); if(!freq) valid=false;
     }
-    if(step===5) {
+    if(step===6) {
       const temp=getRadio('temperament'); const agD=getRadio('aggrDogs');
       const agP=getRadio('aggrPeople'); const bit=getRadio('bitten'); const str=getRadio('strangers');
       const te=document.getElementById('temperament-err'); if(!temp){te.style.display='block';valid=false;}else{te.style.display='none';}
@@ -656,14 +669,10 @@
         markError(id,!v); if(!v) valid=false;
       });
     }
-    if(step===6) {
+    if(step===7) {
       if(!files.vaccine){document.getElementById('vaccine-err').style.display='block';document.getElementById('f-vaccineFile').classList.add('has-error');valid=false;}
       if(!files.parasite){document.getElementById('parasite-err').style.display='block';document.getElementById('f-parasiteFile').classList.add('has-error');valid=false;}
-      const date=document.getElementById('intakeDate').value;
-      const weeks=document.getElementById('weeks').value;
       const decl=document.getElementById('declaration').checked;
-      markError('intakeDate',!date); if(!date) valid=false;
-      markError('weeks',!weeks);     if(!weeks) valid=false;
       const de=document.getElementById('decl-err');
       if(!decl){de.style.display='block';valid=false;}else{de.style.display='none';}
     }
@@ -825,8 +834,13 @@
     }
   }
 
+  // El calendario ahora vive en el Paso 1, que se muestra sin pasar por showStep() al cargar la página.
+  // Se carga aquí en vez de esperar un cambio de paso (window.loadAvailability solo existe una vez
+  // que el script del módulo Firebase corrió, por eso se engancha a DOMContentLoaded).
+  document.addEventListener('DOMContentLoaded', loadCalendar);
+
   async function submitForm() {
-    if(!validateStep(6)) return;
+    if(!validateStep(7)) return;
     const btn=document.getElementById('submitBtn');
     btn.textContent='Subiendo documentos...'; btn.disabled=true;
     try {
