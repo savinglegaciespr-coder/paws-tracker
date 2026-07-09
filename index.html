@@ -415,7 +415,8 @@
           `${biz.businessName} — ¡Tu solicitud ha sido confirmada!`,
           `<p>Estimado/a <strong>${intakeData.ownerName}</strong>,</p>
            <p>Nos complace informarte que la solicitud de ingreso para <strong>${intakeData.dogName}</strong> ha sido <strong>confirmada</strong>.</p>
-           <p>Deberás entregar tu mascota el día <strong>${fmtDateES(intakeData.intakeDate)}</strong>.</p>
+           <p>Deberás entregar tu mascota el día <strong>${fmtDateES(intakeData.intakeDate)}</strong>${intakeData.dropoffTime ? ` a las <strong>${fmtTime(intakeData.dropoffTime)}</strong>` : ''}.</p>
+           <p>Fecha de salida estimada: <strong>${fmtDateES(calcExitFromIntake(intakeData.intakeDate, intakeData.weeks))}</strong>${intakeData.pickupTime ? ` — hora de recogida: <strong>${fmtTime(intakeData.pickupTime)}</strong>` : ''}.</p>
            <br/>
            <p><strong>Instrucciones importantes para el día de entrega:</strong></p>
            <ul>
@@ -452,6 +453,7 @@
   }
 
   window.FB = { addStudent, updateStudent, deleteStudent, addLog, updateLog, deleteLog, getUsers, updateUserRole, logout, loginWithGoogle, getIntakes, approveIntake, rejectIntake, deleteIntake };
+  window.calcExitFromIntake = calcExitFromIntake;
   window.getStudents = () => students;
   window.getLogs = () => logs;
   window.getCurrentUser = () => currentUser;
@@ -2316,6 +2318,18 @@ function _renderIntakes(list, intakesToRender) {
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
             <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Salida estimada</div>
+            <div style="font-weight:700;">${fmtDate(calcExitFromIntake(intake.intakeDate, intake.weeks))}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Hora entrega</div>
+            <div style="font-weight:700;">${intake.dropoffTime?fmtTime(intake.dropoffTime):'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+            <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Hora recogida</div>
+            <div style="font-weight:700;">${intake.pickupTime?fmtTime(intake.pickupTime):'—'}</div>
           </div>
           <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Semanas</div>
