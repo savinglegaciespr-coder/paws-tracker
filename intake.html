@@ -158,6 +158,46 @@
           <div id="intakeCalWrap"><div class="ical-loading">Cargando disponibilidad...</div></div>
           <span class="error-msg">Selecciona una fecha</span>
         </div>
+        <div class="field" id="f-dropoffTime">
+          <label>Hora de entrega<span class="req">*</span></label>
+          <select id="dropoffTime">
+            <option value="">-- Seleccionar --</option>
+            <option value="10:00">10:00 am</option>
+            <option value="10:30">10:30 am</option>
+            <option value="11:00">11:00 am</option>
+            <option value="11:30">11:30 am</option>
+            <option value="12:00">12:00 pm</option>
+            <option value="12:30">12:30 pm</option>
+            <option value="13:00">1:00 pm</option>
+            <option value="13:30">1:30 pm</option>
+            <option value="14:00">2:00 pm</option>
+            <option value="14:30">2:30 pm</option>
+            <option value="15:00">3:00 pm</option>
+            <option value="15:30">3:30 pm</option>
+            <option value="16:00">4:00 pm</option>
+          </select>
+          <span class="error-msg">Selecciona una hora</span>
+        </div>
+        <div class="field" id="f-pickupTime">
+          <label>Hora de recogida<span class="req">*</span></label>
+          <select id="pickupTime">
+            <option value="">-- Seleccionar --</option>
+            <option value="10:00">10:00 am</option>
+            <option value="10:30">10:30 am</option>
+            <option value="11:00">11:00 am</option>
+            <option value="11:30">11:30 am</option>
+            <option value="12:00">12:00 pm</option>
+            <option value="12:30">12:30 pm</option>
+            <option value="13:00">1:00 pm</option>
+            <option value="13:30">1:30 pm</option>
+            <option value="14:00">2:00 pm</option>
+            <option value="14:30">2:30 pm</option>
+            <option value="15:00">3:00 pm</option>
+            <option value="15:30">3:30 pm</option>
+            <option value="16:00">4:00 pm</option>
+          </select>
+          <span class="error-msg">Selecciona una hora</span>
+        </div>
         <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
       </div>
       <div class="form-nav"><button type="button" class="btn btn-primary" onclick="nextStep(1)">Continuar →</button></div>
@@ -473,6 +513,9 @@
     }
 
     const fmtDate = ds => ds ? new Date(ds+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—';
+    // Misma fórmula que fmtTime() en index.html — mantener ambas en sync si cambia.
+    const fmtTime = t => { if(!t) return '—'; const [h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; };
+    const exitDs = window.calcExitFromIntake ? window.calcExitFromIntake(data.intakeDate, data.weeks) : '';
 
     // Email al cliente — confirmación de recibo
     try {
@@ -482,7 +525,8 @@
         message: {
           subject: `${businessName} — Solicitud recibida para ${data.dogName}`,
           html: `<p>Estimado/a <strong>${data.ownerName}</strong>,</p>
-                 <p>Hemos recibido tu solicitud de ingreso para <strong>${data.dogName}</strong> con fecha deseada el <strong>${fmtDate(data.intakeDate)}</strong>.</p>
+                 <p>Hemos recibido tu solicitud de ingreso para <strong>${data.dogName}</strong> con fecha deseada el <strong>${fmtDate(data.intakeDate)}</strong>${exitDs ? ` y salida estimada el <strong>${fmtDate(exitDs)}</strong>` : ''}.</p>
+                 <p><strong>Hora de entrega:</strong> ${fmtTime(data.dropoffTime)} &nbsp;·&nbsp; <strong>Hora de recogida:</strong> ${fmtTime(data.pickupTime)}</p>
                  <p>Te estaremos contactando antes de <strong>24 horas</strong> para confirmar disponibilidad.</p>
                  <br/><p><strong>${businessName}</strong><br/>📞 ${phone}</p>`
         }
@@ -501,7 +545,9 @@
                  <p><strong>Email:</strong> ${data.email}</p>
                  <p><strong>Perro:</strong> ${data.dogName} (${data.breed})</p>
                  <p><strong>Fecha de ingreso deseada:</strong> ${fmtDate(data.intakeDate)}</p>
+                 ${exitDs ? `<p><strong>Fecha de salida estimada:</strong> ${fmtDate(exitDs)}</p>` : ''}
                  <p><strong>Semanas:</strong> ${data.weeks}</p>
+                 <p><strong>Hora de entrega:</strong> ${fmtTime(data.dropoffTime)} &nbsp;·&nbsp; <strong>Hora de recogida:</strong> ${fmtTime(data.pickupTime)}</p>
                  ${data.allergies ? `<p><strong>Alergias:</strong> ${data.allergies}</p>` : ''}
                  ${data.medications ? `<p><strong>Medicamentos:</strong> ${data.medications}</p>` : ''}
                  ${data.extraNotes ? `<p><strong>Notas adicionales:</strong> ${data.extraNotes}</p>` : ''}`
@@ -643,8 +689,12 @@
     if(step===1) {
       const date=document.getElementById('intakeDate').value;
       const weeks=document.getElementById('weeks').value;
+      const dropoff=document.getElementById('dropoffTime').value;
+      const pickup=document.getElementById('pickupTime').value;
       markError('intakeDate',!date); if(!date) valid=false;
       markError('weeks',!weeks);     if(!weeks) valid=false;
+      markError('dropoffTime',!dropoff); if(!dropoff) valid=false;
+      markError('pickupTime',!pickup);   if(!pickup) valid=false;
     }
     if(step===2) {
       const name=document.getElementById('ownerName').value.trim();
@@ -927,6 +977,8 @@
         emergencyPhone:document.getElementById('emergencyPhone').value.trim(),
         intakeDate:document.getElementById('intakeDate').value,
         weeks:document.getElementById('weeks').value,
+        dropoffTime:document.getElementById('dropoffTime').value,
+        pickupTime:document.getElementById('pickupTime').value,
         extraNotes:document.getElementById('extraNotes').value.trim(),
         vaccineFileURL: fileURLs.vaccine || '',
         parasiteFileURL: fileURLs.parasite || '',
@@ -982,6 +1034,8 @@
             emergencyPhone:document.getElementById('emergencyPhone').value.trim(),
             intakeDate:document.getElementById('intakeDate').value,
             weeks:document.getElementById('weeks').value,
+            dropoffTime:document.getElementById('dropoffTime').value,
+            pickupTime:document.getElementById('pickupTime').value,
             extraNotes:document.getElementById('extraNotes').value.trim(),
             vaccineFileURL: fileURLs.vaccine || '',
             parasiteFileURL: fileURLs.parasite || '',
