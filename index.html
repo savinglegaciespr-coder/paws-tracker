@@ -2186,7 +2186,7 @@ function showCalDay(ds){
   if(outs.length){
     if(ins.length||active.length) html2 += '<div style="height:12px;"></div>';
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:8px;">🟡 Salen</div>';
-    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.time)+'</span>':''}</div>`).join('');
+    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.time)+'</span>':''}</div>`).join('');
   }
 
   document.getElementById('calDetailContent').innerHTML = html2;
