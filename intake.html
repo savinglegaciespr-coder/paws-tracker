@@ -145,7 +145,7 @@
       <div class="field-grid">
         <div class="field" id="f-weeks">
           <label>Semanas de estadía estimadas<span class="req">*</span></label>
-          <select id="weeks">
+          <select id="weeks" onchange="if(_calSlots) renderIntakeCal();">
             <option value="">-- Seleccionar --</option>
             <option value="1">1 semana</option>
             <option value="2">2 semanas</option>
@@ -188,7 +188,12 @@
         <div class="field full" id="f-dogName"><label>Nombre del perro<span class="req">*</span></label><input type="text" id="dogName" placeholder="Ej: Max, Luna, Toby..."/><span class="error-msg">Este campo es requerido</span></div>
         <div class="field" id="f-breed"><label>Raza<span class="req">*</span></label><input type="text" id="breed" placeholder="Ej: Golden Retriever"/><span class="error-msg">Este campo es requerido</span></div>
         <div class="field"><label>Color</label><input type="text" id="color" placeholder="Ej: Dorado, Negro, Blanco"/></div>
-        <div class="field"><label>Fecha de nacimiento</label><input type="date" id="dob"/></div>
+        <div class="field" id="f-dob">
+          <label>Fecha de nacimiento<span class="req">*</span></label>
+          <input type="date" id="dob" oninput="updateDobAge()"/>
+          <span id="dobAge" style="font-size:11px;color:var(--green2);font-weight:600;margin-top:4px;"></span>
+          <span class="error-msg">Este campo es requerido</span>
+        </div>
         <div class="field"><label>Peso aproximado</label><input type="text" id="weight" placeholder="Ej: 25 lbs"/></div>
         <div class="field" id="f-sex">
           <label>Sexo<span class="req">*</span></label>
@@ -554,6 +559,27 @@
     return c?c.value:'';
   }
 
+  // Misma fórmula que calcAge() en index.html — mantener ambas en sync si cambia.
+  function calcAge(dob) {
+    if(!dob) return '';
+    const b = new Date(dob+'T12:00:00');
+    const n = new Date();
+    let years = n.getFullYear() - b.getFullYear();
+    let months = n.getMonth() - b.getMonth();
+    if(n.getDate() < b.getDate()) months--;
+    if(months < 0){ years--; months += 12; }
+    if(years < 0) return '';
+    if(years === 0) return months + ' m' + (months !== 1 ? 'eses' : 'es');
+    if(months === 0) return years + ' año' + (years !== 1 ? 's' : '');
+    return years + 'a ' + months + 'm';
+  }
+
+  function updateDobAge() {
+    const dob = document.getElementById('dob').value;
+    const age = calcAge(dob);
+    document.getElementById('dobAge').textContent = age ? `🐾 ${age}` : '';
+  }
+
   function markError(id,show) {
     const el=document.getElementById('f-'+id);
     if(!el) return;
@@ -634,9 +660,11 @@
     if(step===3) {
       const dog=document.getElementById('dogName').value.trim();
       const breed=document.getElementById('breed').value.trim();
+      const dob=document.getElementById('dob').value;
       const sex=getRadio('sex'); const neut=getRadio('neutered'); const vacc=getRadio('vaccines');
       markError('dogName',!dog);  if(!dog) valid=false;
       markError('breed',!breed);  if(!breed) valid=false;
+      markError('dob',!dob);      if(!dob) valid=false;
       const se=document.getElementById('sex-err'); if(!sex){se.style.display='block';valid=false;}else{se.style.display='none';}
       const ne=document.getElementById('neutered-err'); if(!neut){ne.style.display='block';valid=false;}else{ne.style.display='none';}
       const ve=document.getElementById('vaccines-err'); if(!vacc){ve.style.display='block';valid=false;}else{ve.style.display='none';}
@@ -691,6 +719,17 @@
 
   function _dateStr(y, m, d) {
     return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+
+  // Misma fórmula que calcExitFromIntake() en index.html — mantener ambas en sync si cambia.
+  function calcExitFromIntake(intakeDateStr, weeks) {
+    const w = parseInt(weeks);
+    if (!intakeDateStr || !w || w < 1) return '';
+    let days = w * 5 + 1;
+    let d = new Date(intakeDateStr + 'T12:00:00');
+    let added = 0;
+    while (added < days) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) added++; }
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
 
   function _occupancyMap(slots) {
@@ -787,7 +826,15 @@
     const spaces = CAL_MAX - (_occupancyMap(_calSlots)[ds] || 0);
     const d = new Date(ds + 'T12:00:00');
     const label = d.toLocaleDateString('es-PR', { weekday: 'long', day: 'numeric', month: 'long' });
-    return `✅ ${label} — ${spaces} espacio${spaces !== 1 ? 's' : ''} disponible${spaces !== 1 ? 's' : ''}`;
+    let out = `✅ ${label} — ${spaces} espacio${spaces !== 1 ? 's' : ''} disponible${spaces !== 1 ? 's' : ''}`;
+
+    const weeks = document.getElementById('weeks').value;
+    const exitDs = calcExitFromIntake(ds, weeks);
+    if (exitDs) {
+      const exitLabel = new Date(exitDs + 'T12:00:00').toLocaleDateString('es-PR', { weekday: 'long', day: 'numeric', month: 'long' });
+      out += `<div style="margin-top:4px;">📅 Entra: ${label} &nbsp;·&nbsp; Sale: ${exitLabel}</div>`;
+    }
+    return out;
   }
 
   function selectIntakeDate(ds) {
