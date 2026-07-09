@@ -387,8 +387,9 @@
       breed: intakeData.breed || '',
       dob: intakeData.dob || '',
       intake: intakeData.intakeDate || '',
+      dropoffTime: intakeData.dropoffTime || '',
       date: calcExitFromIntake(intakeData.intakeDate, intakeData.weeks),
-      time: '',
+      time: intakeData.pickupTime || '',
       status: 'pendiente',
       obs: [
         intakeData.allergies ? 'Alergias: ' + intakeData.allergies : '',
@@ -1344,7 +1345,7 @@ function renderStudents(){
       </div>
       ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${esc(s.obs.length>60?s.obs.slice(0,60)+'...':s.obs)}</div>` : ''}
     </td>
-    <td>${fmtDate(s.intake)}</td>
+    <td>${fmtDate(s.intake)}${s.dropoffTime?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">⏰ ${fmtTime(s.dropoffTime)}</div>`:''}</td>
     <td>${daysBadge}</td>
     <td>${fmtDate(s.date)}</td>
     <td>${s.time?fmtTime(s.time):'<span style="color:var(--muted)">—</span>'}</td>
@@ -2173,7 +2174,7 @@ function showCalDay(ds){
     : '';
   if(ins.length){
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
-    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}</div>`).join('');
+    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}${s.dropoffTime?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.dropoffTime)+'</span>':''}</div>`).join('');
   }
   if(active.length){
     if(ins.length) html2 += '<div style="height:12px;"></div>';
