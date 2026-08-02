@@ -2319,7 +2319,7 @@ function _renderIntakes(list, intakesToRender) {
             <div style="font-size:14px;font-weight:800;color:var(--text);">${esc(intake.dogName)}</div>
             <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;background:var(--surface2);padding:2px 8px;border-radius:20px;">${esc(statusLabel[intake.status]||intake.status)}</span>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${calcAge(intake.dob)?'🐾 '+esc(calcAge(intake.dob))+' · ':''}${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
           <div style="font-size:11px;color:var(--muted);">${esc(intake.phone1||'')} · ${esc(intake.email||'')}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px;">Recibido: ${intake.createdAt?.toDate ? intake.createdAt.toDate().toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + ' · ' + intake.createdAt.toDate().toLocaleTimeString('es-PR',{hour:'numeric',minute:'2-digit',hour12:true}) : '—'}</div>
         </div>
