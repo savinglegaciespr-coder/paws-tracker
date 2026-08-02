@@ -2481,6 +2481,18 @@ async function confirmApprove(id) {
       const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
       if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 17).\n\n¿Quieres aprobar de todas formas?')) return;
     }
+
+    // Guard de hora duplicada: la reserva temporal del cliente (holds) expira a los 15 min,
+    // así que para solicitudes aprobadas horas/días después hay que volver a chequear aquí.
+    const sameDay = students.filter(s => s.status !== 'completado' && s.intake === ds);
+    const dropoffClash = intake.dropoffTime && sameDay.find(s => s.dropoffTime === intake.dropoffTime);
+    const pickupClash  = intake.pickupTime  && sameDay.find(s => s.time === intake.pickupTime);
+    if (dropoffClash || pickupClash) {
+      let msg = '⚠️ HORA DUPLICADA\n\n';
+      if (dropoffClash) msg += '"' + dropoffClash.name + '" ya tiene la misma hora de entrega (' + fmtTime(intake.dropoffTime) + ').\n';
+      if (pickupClash)  msg += '"' + pickupClash.name + '" ya tiene la misma hora de recogida (' + fmtTime(intake.pickupTime) + ').\n';
+      if (!confirm(msg + '\n¿Quieres aprobar de todas formas?')) return;
+    }
   }
 
   if (!confirm('¿Aprobar e importar a "' + intake.dogName + '" como estudiante pendiente de confirmación?')) return;

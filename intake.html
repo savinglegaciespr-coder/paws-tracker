@@ -160,7 +160,7 @@
         </div>
         <div class="field" id="f-dropoffTime">
           <label>Hora de entrega<span class="req">*</span></label>
-          <select id="dropoffTime">
+          <select id="dropoffTime" onchange="chooseTime('dropoff', this)">
             <option value="">-- Seleccionar --</option>
             <option value="10:00">10:00 am</option>
             <option value="10:30">10:30 am</option>
@@ -180,7 +180,7 @@
         </div>
         <div class="field" id="f-pickupTime">
           <label>Hora de recogida<span class="req">*</span></label>
-          <select id="pickupTime">
+          <select id="pickupTime" onchange="chooseTime('pickup', this)">
             <option value="">-- Seleccionar --</option>
             <option value="10:00">10:00 am</option>
             <option value="10:30">10:30 am</option>
@@ -450,7 +450,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, runTransaction, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
   import { getStorage, ref, uploadBytesResumable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
   const firebaseConfig = {
@@ -569,6 +569,35 @@
   window.unsubAvailability = () => {
     if (_unsubAvailability) { _unsubAvailability(); _unsubAvailability = null; }
   };
+
+  // Reservas temporales de hora (entrega/recogida) para que dos clientes no puedan
+  // tomar la misma fecha+hora mientras ambos llenan el formulario al mismo tiempo.
+  const HOLD_TTL_MS = 15 * 60 * 1000; // 15 minutos — tiempo estimado para llenar el formulario
+  const holdId = (date, type, time) => `${date}_${type}_${time}`;
+
+  // Devuelve 'ok' | 'taken' | 'error'
+  window.attemptHold = async (date, type, time) => {
+    const ref = doc(db, 'holds', holdId(date, type, time));
+    try {
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const now = Date.now();
+        if (snap.exists() && snap.data().expiresAt > now) throw { code: 'already-held' };
+        tx.set(ref, { date, type, time, expiresAt: now + HOLD_TTL_MS });
+      });
+      return 'ok';
+    } catch (e) {
+      if (e && e.code === 'already-held') return 'taken';
+      console.error('Hold error:', e);
+      return 'error';
+    }
+  };
+
+  window.releaseHold = async (date, type, time) => {
+    if (!date || !type || !time) return;
+    try { await deleteDoc(doc(db, 'holds', holdId(date, type, time))); }
+    catch (e) { console.warn('No se pudo liberar hold (se dejará expirar):', e.code || e.message); }
+  };
 </script>
 
 <script>
@@ -576,6 +605,89 @@
   const totalSteps = 7;
   const files = { vaccine: null, parasite: null };
   const fileURLs = { vaccine: null, parasite: null };
+  const _myHolds = { dropoff: null, pickup: null }; // { date, time } por tipo, mientras el cliente llena el formulario
+  let _timeHoldPending = 0; // > 0 mientras se confirma una reserva de hora contra Firestore
+
+  function showTimeError(fieldId, msg) {
+    const span = document.querySelector('#f-' + fieldId + ' .error-msg');
+    if (span) span.textContent = msg;
+    markError(fieldId, true);
+  }
+
+  function clearTimeError(fieldId) {
+    const span = document.querySelector('#f-' + fieldId + ' .error-msg');
+    if (span) span.textContent = 'Selecciona una hora';
+    markError(fieldId, false);
+  }
+
+  async function chooseTime(type, selectEl) {
+    const fieldId = type === 'dropoff' ? 'dropoffTime' : 'pickupTime';
+    const time = selectEl.value;
+    if (!time) { _myHolds[type] = null; clearTimeError(fieldId); return; }
+
+    const date = document.getElementById('intakeDate').value;
+    if (!date) {
+      selectEl.value = '';
+      showTimeError(fieldId, 'Selecciona primero la fecha de ingreso.');
+      return;
+    }
+
+    selectEl.disabled = true;
+    _timeHoldPending++;
+    const result = await window.attemptHold(date, type, time);
+    _timeHoldPending--;
+    selectEl.disabled = false;
+
+    if (result !== 'ok') {
+      selectEl.value = '';
+      showTimeError(fieldId, result === 'taken' ? 'Esa hora ya fue tomada, elige otra.' : 'No se pudo reservar la hora, intenta de nuevo.');
+      return;
+    }
+
+    const prev = _myHolds[type];
+    if (prev && (prev.date !== date || prev.time !== time)) window.releaseHold(prev.date, type, prev.time);
+    _myHolds[type] = { date, time };
+    clearTimeError(fieldId);
+  }
+
+  // Si el cliente cambia la fecha después de haber elegido horas, hay que trasladar
+  // (o invalidar) las reservas ya hechas contra la fecha anterior.
+  async function revalidateHoldsForDate(newDate) {
+    _timeHoldPending++;
+    try {
+    for (const type of ['dropoff', 'pickup']) {
+      const fieldId = type === 'dropoff' ? 'dropoffTime' : 'pickupTime';
+      const selectEl = document.getElementById(fieldId);
+      const time = selectEl.value;
+      if (!time) continue;
+      const prev = _myHolds[type];
+      if (prev && prev.date === newDate) continue; // misma fecha, hold sigue vigente
+
+      const result = await window.attemptHold(newDate, type, time);
+      if (prev) window.releaseHold(prev.date, type, prev.time);
+      if (result === 'ok') {
+        _myHolds[type] = { date: newDate, time };
+        clearTimeError(fieldId);
+      } else {
+        _myHolds[type] = null;
+        selectEl.value = '';
+        showTimeError(fieldId, result === 'taken' ? 'Esa hora ya fue tomada para la nueva fecha, elige otra.' : 'No se pudo reservar la hora, intenta de nuevo.');
+      }
+    }
+    } finally {
+      _timeHoldPending--;
+    }
+  }
+
+  function releaseMyHolds() {
+    for (const type of ['dropoff', 'pickup']) {
+      const h = _myHolds[type];
+      if (h) window.releaseHold(h.date, type, h.time);
+      _myHolds[type] = null;
+    }
+  }
+
+  window.addEventListener('beforeunload', releaseMyHolds);
 
   function updateProgress(step) {
     document.getElementById('stepIndicator').textContent = `Paso ${step} de ${totalSteps}`;
@@ -757,7 +869,7 @@
     return valid;
   }
 
-  function nextStep(step){ if(!validateStep(step)) return; if(step<totalSteps) showStep(step+1); }
+  function nextStep(step){ if(step===1 && _timeHoldPending>0) return; if(!validateStep(step)) return; if(step<totalSteps) showStep(step+1); }
   function prevStep(step){ if(step>1) showStep(step-1); }
 
   // ── CALENDARIO DE DISPONIBILIDAD ──────────────────────────────
@@ -892,6 +1004,7 @@
     document.getElementById('intakeDate').value = ds;
     markError('intakeDate', false);
     renderIntakeCal();
+    revalidateHoldsForDate(ds);
   }
 
   function icalPrev() {
@@ -984,6 +1097,7 @@
         parasiteFileURL: fileURLs.parasite || '',
       };
       await window.saveIntake(data);
+      releaseMyHolds();
       if (window.unsubAvailability) window.unsubAvailability();
       document.getElementById('intakeForm').style.display='none';
       document.getElementById('stepIndicator').style.display='none';
@@ -1041,6 +1155,7 @@
             parasiteFileURL: fileURLs.parasite || '',
           };
           await window.saveIntake(data);
+          releaseMyHolds();
           document.getElementById('intakeForm').style.display='none';
           document.getElementById('stepIndicator').style.display='none';
           document.getElementById('progressBar').style.display='none';
