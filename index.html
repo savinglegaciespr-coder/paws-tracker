@@ -1498,7 +1498,7 @@ function refreshLogDogSelect() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">-- Seleccionar --</option>';
-  sortStudents(students).filter(s => s.status !== 'completado').forEach(s => {
+  sortStudents(students).filter(s => s.status === 'activo').forEach(s => {
     const o = document.createElement('option');
     const key = dogKey(s, students);
     o.value = key;
