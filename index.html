@@ -1226,29 +1226,15 @@ function fmtTime(t){ if(!t)return'—'; const[h,m]=t.split(':').map(Number); ret
 function fmtDate(d){ if(!d)return'<span style="color:var(--muted)">—</span>'; return new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'}); }
 
 function sortStudents(arr) {
-  const _now = new Date();
-  const _pad = n => String(n).padStart(2,'0');
-  const todayStr    = _now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
-  const _tom = new Date(_now); _tom.setDate(_tom.getDate()+1);
-  const tomorrowStr = _tom.getFullYear()+'-'+_pad(_tom.getMonth()+1)+'-'+_pad(_tom.getDate());
+  // Orden: completados al fondo → fecha de salida asc (sin fecha al final) →
+  // hora de salida asc → fecha de entrada asc → status (activo antes que pendiente).
+  // Los que salen hoy/mañana quedan arriba de forma natural por ser las fechas más próximas —
+  // no hace falta un caso especial para eso (ver [[project-pawstracker]] para el historial).
   return [...arr].sort((a, b) => {
     const isComp = s => s.status === 'completado';
     if (isComp(a) && !isComp(b)) return 1;
     if (!isComp(a) && isComp(b)) return -1;
     if (isComp(a) && isComp(b)) return 0;
-    const exitPriority = s => s.date === todayStr ? 0 : s.date === tomorrowStr ? 1 : 2;
-    const pa = exitPriority(a), pb = exitPriority(b);
-    if (pa !== pb) return pa - pb;
-    if (pa < 2) {
-      if (!a.time && !b.time) {}
-      else if (!a.time) return 1;
-      else if (!b.time) return -1;
-      else if (a.time !== b.time) return a.time < b.time ? -1 : 1;
-    }
-    if (!a.intake && !b.intake) {}
-    else if (!a.intake) return 1;
-    else if (!b.intake) return -1;
-    else if (a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
     if (!a.date && !b.date) {}
     else if (!a.date) return 1;
     else if (!b.date) return -1;
@@ -1257,6 +1243,10 @@ function sortStudents(arr) {
     else if (!a.time) return 1;
     else if (!b.time) return -1;
     else if (a.time !== b.time) return a.time < b.time ? -1 : 1;
+    if (!a.intake && !b.intake) {}
+    else if (!a.intake) return 1;
+    else if (!b.intake) return -1;
+    else if (a.intake !== b.intake) return a.intake < b.intake ? -1 : 1;
     const order = { activo: 0, pendiente: 1 };
     return (order[a.status] ?? 0) - (order[b.status] ?? 0);
   });
