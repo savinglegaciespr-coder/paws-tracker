@@ -876,7 +876,7 @@
   function prevStep(step){ if(step>1) showStep(step-1); }
 
   // ── CALENDARIO DE DISPONIBILIDAD ──────────────────────────────
-  const CAL_MAX = 17;
+  const CAL_MAX = 22;
   let _calSlots = null;
   let _calYear = null;
   let _calMonth = null;
@@ -1044,7 +1044,7 @@
         // Si la fecha seleccionada ya no está disponible, limpiarla
         if (_calSelectedDate) {
           const occ = _occupancyMap(_calSlots)[_calSelectedDate] || 0;
-          if (occ >= 17) {
+          if (occ >= 22) {
             _calSelectedDate = '';
             document.getElementById('intakeDate').value = '';
             if (currentStep !== 1) showDateInvalidBanner();

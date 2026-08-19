@@ -2110,7 +2110,7 @@ function renderCalendar(){
     if(ev.out.length >= 3) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin:0 1px;"></span>`;
     else if(ev.out.length) dotsHtml += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin:0 1px;"></span>`;
 
-    const CAP = 17;
+    const CAP = 22;
     const totalActive = ev.in.length + ev.active.length + ev.out.length;
     if(totalActive>0){
       const pct=totalActive/CAP;
@@ -2147,7 +2147,7 @@ function showCalDay(ds){
   const d = new Date(calYear,calMonth,parseInt(ds));
   document.getElementById('calDetailTitle').textContent = d.toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  const CAP = 17;
+  const CAP = 22;
   const totalOcc = ins.length + active.length + outs.length;
   const pct = totalOcc / CAP;
   const occColor = pct >= 0.8 ? 'var(--red)' : pct >= 0.5 ? 'var(--yellow)' : 'var(--green2)';
@@ -2177,7 +2177,7 @@ function renderUpcoming() {
   const el = document.getElementById('calUpcoming');
   if (!el) return;
   const students = window.getStudents() || [];
-  const CAP = 17;
+  const CAP = 22;
   const _tp = n => String(n).padStart(2,'0');
   const results = [];
   const cursor = new Date();
@@ -2457,9 +2457,9 @@ async function confirmApprove(id) {
     const count = students.filter(s =>
       s.status !== 'completado' && s.intake && s.intake <= ds && (!s.date || s.date >= ds)
     ).length;
-    if (count >= 17) {
+    if (count >= 22) {
       const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-      if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 17).\n\n¿Quieres aprobar de todas formas?')) return;
+      if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 22).\n\n¿Quieres aprobar de todas formas?')) return;
     }
 
     // Guard de hora duplicada: la reserva temporal del cliente (holds) expira a los 15 min,
