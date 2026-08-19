@@ -128,7 +128,7 @@
     <p>Completa el siguiente formulario para solicitar un espacio para tu mascota.<br/>Nos comunicaremos contigo en un máximo de 24 horas para confirmar disponibilidad.</p>
   </div>
   <div id="dateInvalidBanner">⚠️ La fecha u horas que habías elegido ya no están disponibles. Vuelve al Paso 1 para seleccionar de nuevo antes de enviar.</div>
-  <div class="step-indicator" id="stepIndicator">Paso 1 de 7</div>
+  <div class="step-indicator" id="stepIndicator">Paso 1 de 8</div>
   <div class="progress-wrap" id="progressBar">
     <div class="progress-step active" id="ps1"></div>
     <div class="progress-step" id="ps2"></div>
@@ -137,6 +137,7 @@
     <div class="progress-step" id="ps5"></div>
     <div class="progress-step" id="ps6"></div>
     <div class="progress-step" id="ps7"></div>
+    <div class="progress-step" id="ps8"></div>
   </div>
 
   <form id="intakeForm" novalidate>
@@ -206,8 +207,43 @@
       <div class="form-nav"><button type="button" class="btn btn-primary" onclick="nextStep(1)">Continuar →</button></div>
     </div>
 
-    <!-- PASO 2: Contacto -->
+    <!-- PASO 2: Objetivos de Entrenamiento -->
     <div class="form-section" id="step2">
+      <div class="section-title">Objetivos de Entrenamiento</div>
+      <div class="section-sub">Selecciona todo lo que te gustaría trabajar con tu perro</div>
+      <div class="field-grid single">
+        <div class="field" id="f-trainingGoals">
+          <label>¿Qué te gustaría trabajar?<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Caminar sin halar la correa" onclick="updateTrainingPriorityOptions()"/> Caminar sin halar la correa</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Caminar al lado (heel)" onclick="updateTrainingPriorityOptions()"/> Caminar al lado (heel)</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="No brincar en personas" onclick="updateTrainingPriorityOptions()"/> No brincar en personas</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Socialización con otros perros" onclick="updateTrainingPriorityOptions()"/> Socialización con otros perros</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Sit" onclick="updateTrainingPriorityOptions()"/> Sit</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Down" onclick="updateTrainingPriorityOptions()"/> Down</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Stay" onclick="updateTrainingPriorityOptions()"/> Stay</label>
+            <label class="radio-opt"><input type="checkbox" class="goal-check" value="Place" onclick="updateTrainingPriorityOptions()"/> Place</label>
+            <label class="radio-opt"><input type="checkbox" id="goalOtherCheck" onclick="toggleConditional('goalOtherExp',this.checked);updateTrainingPriorityOptions();"/> Otro</label>
+          </div>
+          <div class="conditional-field" id="goalOtherExp"><textarea id="trainingGoalsOther" placeholder="Describe el objetivo..." oninput="updateTrainingPriorityOptions()"></textarea></div>
+          <span class="error-msg" id="trainingGoals-err">Selecciona al menos un objetivo</span>
+        </div>
+        <div class="field" id="f-trainingPriority">
+          <label>¿Cuál te preocupa más?<span class="req">*</span></label>
+          <select id="trainingPriority">
+            <option value="">-- Selecciona primero los objetivos arriba --</option>
+          </select>
+          <span class="error-msg">Selecciona cuál te preocupa más</span>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(2)">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: Contacto -->
+    <div class="form-section" id="step3">
       <div class="section-title">Información de Contacto</div>
       <div class="section-sub">Datos del dueño de la mascota</div>
       <div class="field-grid">
@@ -218,13 +254,13 @@
         <div class="field full" id="f-email"><label>Correo electrónico<span class="req">*</span></label><input type="email" id="email" placeholder="tu@email.com"/><span class="error-msg">Ingresa un correo válido</span></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(2)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(2)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 3: Mascota -->
-    <div class="form-section" id="step3">
+    <!-- PASO 4: Mascota -->
+    <div class="form-section" id="step4">
       <div class="section-title">Información de la Mascota</div>
       <div class="section-sub">Datos del perro</div>
       <div class="field-grid">
@@ -264,13 +300,13 @@
         </div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(3)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(3)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(4)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 4: Salud -->
-    <div class="form-section" id="step4">
+    <!-- PASO 5: Salud -->
+    <div class="form-section" id="step5">
       <div class="section-title">Salud y Cuidados</div>
       <div class="section-sub">Información médica de la mascota</div>
       <div class="field-grid single">
@@ -279,13 +315,13 @@
         <div class="field"><label>Rutina de ejercicios habitual</label><textarea id="exercise" placeholder="Ej: Caminata de 30 minutos dos veces al día..."></textarea></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(4)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(4)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(5)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 5: Alimentación -->
-    <div class="form-section" id="step5">
+    <!-- PASO 6: Alimentación -->
+    <div class="form-section" id="step6">
       <div class="section-title">Alimentación</div>
       <div class="section-sub">Hábitos y preferencias alimentarias</div>
       <div class="field-grid single">
@@ -294,13 +330,13 @@
         <div class="field"><label>Restricciones alimentarias</label><textarea id="foodRestrictions" placeholder="Ej: Sin pollo, sin granos..."></textarea></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(5)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(5)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(6)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(6)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 6: Temperamento y Veterinario -->
-    <div class="form-section" id="step6">
+    <!-- PASO 7: Temperamento y Veterinario -->
+    <div class="form-section" id="step7">
       <div class="section-title">Temperamento y Comportamiento</div>
       <div class="section-sub">Información crítica de seguridad — todos los campos son requeridos</div>
       <div class="field-grid single">
@@ -368,13 +404,13 @@
         <div class="field" id="f-emergencyPhone"><label>Teléfono de emergencia<span class="req">*</span></label><input type="tel" id="emergencyPhone" placeholder="787-000-0000"/><span class="error-msg">Este campo es requerido</span></div>
       </div>
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(6)">← Atrás</button>
-        <button type="button" class="btn btn-primary" onclick="nextStep(6)">Continuar →</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(7)">← Atrás</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep(7)">Continuar →</button>
       </div>
     </div>
 
-    <!-- PASO 7: Documentos y Declaración -->
-    <div class="form-section" id="step7">
+    <!-- PASO 8: Documentos y Declaración -->
+    <div class="form-section" id="step8">
       <div class="section-title">Documentos de Salud</div>
       <div class="section-sub">Evidencia requerida — formatos aceptados: JPG, PNG, PDF (máx. 5MB)</div>
       <div class="field-grid single">
@@ -435,7 +471,7 @@
       </div>
 
       <div class="form-nav">
-        <button type="button" class="btn btn-ghost" onclick="prevStep(7)">← Atrás</button>
+        <button type="button" class="btn btn-ghost" onclick="prevStep(8)">← Atrás</button>
         <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitForm()">Enviar solicitud ✓</button>
       </div>
     </div>
@@ -605,7 +641,7 @@
 
 <script>
   let currentStep = 1;
-  const totalSteps = 7;
+  const totalSteps = 8;
   const files = { vaccine: null, parasite: null };
   const fileURLs = { vaccine: null, parasite: null };
   const _myHolds = { dropoff: null, pickup: null }; // { date, time } por tipo, mientras el cliente llena el formulario
@@ -715,6 +751,31 @@
     show ? el.classList.add('visible') : el.classList.remove('visible');
   }
 
+  function getTrainingGoals() {
+    const goals = [...document.querySelectorAll('.goal-check:checked')].map(c => c.value);
+    const otherChecked = document.getElementById('goalOtherCheck').checked;
+    const otherText = document.getElementById('trainingGoalsOther').value.trim();
+    if (otherChecked && otherText) goals.push(otherText);
+    return goals;
+  }
+
+  function updateTrainingPriorityOptions() {
+    const goals = getTrainingGoals();
+    const sel = document.getElementById('trainingPriority');
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = goals.length ? '-- Selecciona --' : '-- Selecciona primero los objetivos arriba --';
+    sel.appendChild(blank);
+    goals.forEach(g => {
+      const o = document.createElement('option');
+      o.value = g; o.textContent = g;
+      sel.appendChild(o);
+    });
+    sel.value = goals.includes(prev) ? prev : '';
+  }
+
   function getRadio(name) {
     const c=document.querySelector(`input[name="${name}"]:checked`);
     return c?c.value:'';
@@ -812,6 +873,21 @@
       markError('pickupTime',!pickup);   if(!pickup) valid=false;
     }
     if(step===2) {
+      const otherChecked = document.getElementById('goalOtherCheck').checked;
+      const otherText = document.getElementById('trainingGoalsOther').value.trim();
+      const goalsErr = document.getElementById('trainingGoals-err');
+      if (otherChecked && !otherText) {
+        markError('trainingGoals', true); valid=false;
+        goalsErr.textContent = 'Describe el objetivo "Otro" o desmárcalo';
+      } else {
+        const goals = getTrainingGoals();
+        markError('trainingGoals', goals.length===0); if(goals.length===0) valid=false;
+        goalsErr.textContent = 'Selecciona al menos un objetivo';
+      }
+      const priority = document.getElementById('trainingPriority').value;
+      markError('trainingPriority', !priority); if(!priority) valid=false;
+    }
+    if(step===3) {
       const name=document.getElementById('ownerName').value.trim();
       const addr=document.getElementById('address').value.trim();
       const ph=document.getElementById('phone1').value.trim();
@@ -822,7 +898,7 @@
       const emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
       markError('email',!emailOk);  if(!emailOk) valid=false;
     }
-    if(step===3) {
+    if(step===4) {
       const dog=document.getElementById('dogName').value.trim();
       const breed=document.getElementById('breed').value.trim();
       const dob=document.getElementById('dob').value;
@@ -834,13 +910,13 @@
       const ne=document.getElementById('neutered-err'); if(!neut){ne.style.display='block';valid=false;}else{ne.style.display='none';}
       const ve=document.getElementById('vaccines-err'); if(!vacc){ve.style.display='block';valid=false;}else{ve.style.display='none';}
     }
-    if(step===5) {
+    if(step===6) {
       const food=document.getElementById('food').value.trim();
       const freq=document.getElementById('feedingSchedule').value.trim();
       markError('food',!food);            if(!food) valid=false;
       markError('feedingSchedule',!freq); if(!freq) valid=false;
     }
-    if(step===6) {
+    if(step===7) {
       const temp=getRadio('temperament'); const agD=getRadio('aggrDogs');
       const agP=getRadio('aggrPeople'); const bit=getRadio('bitten'); const str=getRadio('strangers');
       const te=document.getElementById('temperament-err'); if(!temp){te.style.display='block';valid=false;}else{te.style.display='none';}
@@ -862,7 +938,7 @@
         markError(id,!v); if(!v) valid=false;
       });
     }
-    if(step===7) {
+    if(step===8) {
       if(!files.vaccine){document.getElementById('vaccine-err').style.display='block';document.getElementById('f-vaccineFile').classList.add('has-error');valid=false;}
       if(!files.parasite){document.getElementById('parasite-err').style.display='block';document.getElementById('f-parasiteFile').classList.add('has-error');valid=false;}
       const decl=document.getElementById('declaration').checked;
@@ -1064,7 +1140,7 @@
 
   async function submitForm() {
     if(!validateStep(1)) { showStep(1); showDateInvalidBanner(); return; }
-    if(!validateStep(7)) return;
+    if(!validateStep(8)) return;
     const btn=document.getElementById('submitBtn');
     btn.textContent='Subiendo documentos...'; btn.disabled=true;
     try {
@@ -1106,6 +1182,8 @@
         weeks:document.getElementById('weeks').value,
         dropoffTime:document.getElementById('dropoffTime').value,
         pickupTime:document.getElementById('pickupTime').value,
+        trainingGoals:getTrainingGoals(),
+        trainingPriority:document.getElementById('trainingPriority').value,
         extraNotes:document.getElementById('extraNotes').value.trim(),
         vaccineFileURL: fileURLs.vaccine || '',
         parasiteFileURL: fileURLs.parasite || '',
@@ -1164,6 +1242,8 @@
             weeks:document.getElementById('weeks').value,
             dropoffTime:document.getElementById('dropoffTime').value,
             pickupTime:document.getElementById('pickupTime').value,
+            trainingGoals:getTrainingGoals(),
+            trainingPriority:document.getElementById('trainingPriority').value,
             extraNotes:document.getElementById('extraNotes').value.trim(),
             vaccineFileURL: fileURLs.vaccine || '',
             parasiteFileURL: fileURLs.parasite || '',

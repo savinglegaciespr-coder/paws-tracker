@@ -390,6 +390,8 @@
       dropoffTime: intakeData.dropoffTime || '',
       date: calcExitFromIntake(intakeData.intakeDate, intakeData.weeks),
       time: intakeData.pickupTime || '',
+      trainingGoals: intakeData.trainingGoals || [],
+      trainingPriority: intakeData.trainingPriority || '',
       status: 'pendiente',
       obs: [
         intakeData.allergies ? 'Alergias: ' + intakeData.allergies : '',
@@ -965,6 +967,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;box-sizing:border-box;width:100%;">
         <div class="field fld-eq"><label>Perro</label><select id="logDog" onchange="onLogDogChange()"><option value="">-- Seleccionar --</option></select></div>
         <div class="field fld-eq"><label>Fecha</label><input type="date" id="logDate" onchange="onLogDateChange()"/></div>
+        <div id="logGoalsMsg" style="display:none;grid-column:1/-1;color:var(--green2);font-size:13px;padding:9px 14px;background:var(--green-dim);border-radius:8px;border:1px solid var(--green);"></div>
         <div id="logDupeMsg" style="display:none;grid-column:1/-1;color:var(--red);font-size:13px;padding:9px 14px;background:#ff444420;border-radius:8px;border:1px solid var(--red);"></div>
         <div class="field" style="grid-column:1 / -1;">
           <label>Actividades del día</label>
@@ -1345,6 +1348,7 @@ function renderStudents(){
         ${s.breed ? `<span>${calcAge(s.dob)?'·':''} ${esc(s.breed)}</span>` : ''}
       </div>
       ${s.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:200px;white-space:normal;line-height:1.3;">📋 ${esc(s.obs.length>60?s.obs.slice(0,60)+'...':s.obs)}</div>` : ''}
+      ${s.trainingPriority ? `<div style="margin-top:3px;"><span class="chip chip-green" style="font-size:9px;padding:2px 7px;" title="${esc(s.trainingPriority)}">🎯 ${esc(trainingGoalShort(s.trainingPriority))}</span></div>` : ''}
     </td>
     <td>${fmtDate(s.intake)}${s.dropoffTime?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">⏰ ${fmtTime(s.dropoffTime)}</div>`:''}</td>
     <td>${daysBadge}${weeksBadge}</td>
@@ -1377,6 +1381,22 @@ function calcAge(dob){
   if(years === 0) return months + ' m' + (months !== 1 ? 'eses' : 'es');
   if(months === 0) return years + ' año' + (years !== 1 ? 's' : '');
   return years + 'a ' + months + 'm';
+}
+
+// ── Etiqueta corta para el objetivo de entrenamiento prioritario ──
+// Usada en badges/columnas angostas (tabla, CSV, PDF); la tarjeta de Solicitud,
+// la Bitácora y el reporte 📊 muestran el texto completo directamente.
+const TRAINING_GOAL_SHORT = {
+  'Caminar sin halar la correa': 'Sin halar',
+  'Caminar al lado (heel)': 'Heel',
+  'No brincar en personas': 'No brincar',
+  'Socialización con otros perros': 'Socializar',
+  'Sit': 'Sit', 'Down': 'Down', 'Stay': 'Stay', 'Place': 'Place',
+};
+function trainingGoalShort(label){
+  if(!label) return '';
+  if(TRAINING_GOAL_SHORT[label]) return TRAINING_GOAL_SHORT[label];
+  return label.length > 14 ? label.slice(0,13)+'…' : label;
 }
 
 // ── COUNT NON-SUNDAY DAYS SINCE INTAKE (intake day excluded) ──
@@ -1546,8 +1566,24 @@ function refreshDupeMessage() {
   msg.style.display = 'none';
 }
 
+function refreshLogGoalsMsg() {
+  const dogVal = document.getElementById('logDog')?.value || '';
+  const msg = document.getElementById('logGoalsMsg');
+  if (!msg) return;
+  const students = window.getStudents() || [];
+  const s = students.find(x => dogKey(x, students) === dogVal);
+  if (s && s.trainingPriority) {
+    const rest = (s.trainingGoals||[]).filter(g => g !== s.trainingPriority);
+    msg.innerHTML = '🎯 <b>Prioridad de ' + esc(s.name) + ':</b> ' + esc(s.trainingPriority) +
+      (rest.length ? ' <span style="opacity:.8;">· También: ' + esc(rest.join(', ')) + '</span>' : '');
+    msg.style.display = '';
+  } else {
+    msg.style.display = 'none';
+  }
+}
+
 function onLogDateChange() { refreshLogDogSelect(); }
-function onLogDogChange()  { refreshLogCheckboxes(); refreshDupeMessage(); }
+function onLogDogChange()  { refreshLogCheckboxes(); refreshDupeMessage(); refreshLogGoalsMsg(); }
 
 function updateDogSelects() {
   const students = window.getStudents() || [];
@@ -1790,9 +1826,9 @@ function runExportCSV(){
   const {monthName, y, filtStudents, filtLogs} = getExportRange();
   const actNames = { caminata: 'Caminata', piso: 'Piso' };
   let csv = `PAWS TRAINING — ${monthName} ${y}\n\n`;
-  csv += 'ESTUDIANTES\nNombre,Fecha Ingreso,Fecha Salida,Hora,Estado\n';
+  csv += 'ESTUDIANTES\nNombre,Fecha Ingreso,Fecha Salida,Hora,Estado,Objetivo Prioritario\n';
   filtStudents.forEach(s => {
-    csv += `"${s.name}","${s.intake||''}","${s.date||''}","${s.time||''}","${s.status}"\n`;
+    csv += `"${s.name}","${s.intake||''}","${s.date||''}","${s.time||''}","${s.status}","${(s.trainingPriority||'').replace(/"/g,"'")}"\n`;
   });
   csv += '\nBITACORA\nPerro,Fecha,Actividades,Entrenadores,Notas\n';
   consolidateLogs(filtLogs).forEach(g => {
@@ -1887,13 +1923,13 @@ function runExportPDF(){
   y0 += 4;
   doc.autoTable({
     startY: y0,
-    head: [['Nombre','Ingreso','Días','Salida','Hora','Estado','Observaciones']],
-    body: filtStudents.map(s=>[s.name, fmtD(s.intake), daysIn(s), fmtD(s.date), fmtT(s.time), statusLabel[s.status]||s.status, s.obs||'']),
+    head: [['Nombre','Ingreso','Días','Salida','Hora','Estado','Prioridad','Observaciones']],
+    body: filtStudents.map(s=>[s.name, fmtD(s.intake), daysIn(s), fmtD(s.date), fmtT(s.time), statusLabel[s.status]||s.status, trainingGoalShort(s.trainingPriority), s.obs||'']),
     theme: 'grid',
     headStyles: { fillColor: dark, textColor: white, fontSize:8, fontStyle:'bold' },
     bodyStyles: { fontSize:8, textColor: dark },
     alternateRowStyles: { fillColor: [249,249,249] },
-    columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:20}, 2:{cellWidth:11,halign:'center'}, 3:{cellWidth:20}, 4:{cellWidth:17,halign:'center'}, 5:{cellWidth:18}, 6:{cellWidth:50} },
+    columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:20}, 2:{cellWidth:11,halign:'center'}, 3:{cellWidth:20}, 4:{cellWidth:17,halign:'center'}, 5:{cellWidth:18}, 6:{cellWidth:20}, 7:{cellWidth:44} },
     margin: { left:12, right:12 },
   });
   y0 = doc.lastAutoTable.finalY + 10;
@@ -1958,9 +1994,16 @@ function openDogReport(id){
   document.getElementById('dogReportTitle').textContent = '📊 '+s.name;
   const _prevSub = document.getElementById('dogReportSubtitle');
   if(_prevSub) _prevSub.remove();
+  const _prevGoals = document.getElementById('dogReportGoals');
+  if(_prevGoals) _prevGoals.remove();
   const _subtitle = [s.breed, calcAge(s.dob)].filter(Boolean).join(' · ');
   if(_subtitle) document.getElementById('dogReportTitle').insertAdjacentHTML('afterend',
     `<div id="dogReportSubtitle" style="font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;">${esc(_subtitle)}</div>`);
+  if(s.trainingGoals && s.trainingGoals.length) {
+    const anchor = document.getElementById('dogReportSubtitle') || document.getElementById('dogReportTitle');
+    anchor.insertAdjacentHTML('afterend',
+      `<div id="dogReportGoals" style="font-size:12px;color:var(--green2);font-weight:600;margin-top:4px;">🎯 ${esc(s.trainingPriority||'')}${s.trainingGoals.length>1?` <span style="color:var(--muted);font-weight:500;">· También: ${esc(s.trainingGoals.filter(g=>g!==s.trainingPriority).join(', '))}</span>`:''}</div>`);
+  }
 
   const logRows = dogLogs.length
     ? dogLogs.map(l=>{
@@ -2332,6 +2375,10 @@ function _renderIntakes(list, intakesToRender) {
             <div style="font-weight:700;color:${intake.bitten==='No'?'var(--green)':'var(--red)'};">${esc(intake.bitten||'—')}</div>
           </div>
         </div>
+        ${(intake.trainingGoals&&intake.trainingGoals.length) ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;border-left:3px solid var(--green);">
+          <b style="color:var(--green2);">🎯 Objetivo prioritario:</b> ${esc(intake.trainingPriority||'—')}<br/>
+          <b>Objetivos:</b> ${esc(intake.trainingGoals.join(', '))}
+        </div>`:''}
         ${intake.allergies||intake.medications||intake.food ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;">
           ${intake.allergies?'<b>Alergias:</b> '+esc(intake.allergies)+'<br/>':''}
           ${intake.medications?'<b>Medicamentos:</b> '+esc(intake.medications)+'<br/>':''}
@@ -2384,7 +2431,7 @@ function exportIntakesCSV() {
   csv += 'Exportado: ' + new Date().toLocaleDateString('es-PR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + '\n\n';
   csv += [
     'Estado','Perro','Raza','Fecha Nacimiento','Dueño','Email','Teléfono',
-    'Fecha Ingreso Solicitada','Semanas','Alergias','Temperamento',
+    'Fecha Ingreso Solicitada','Semanas','Objetivo Prioritario','Objetivos de Entrenamiento','Alergias','Temperamento',
     'Agresivo con perros','Detalle agresividad perros',
     'Agresivo con personas','Detalle agresividad personas',
     'Ha mordido','Detalle mordida','Medicamentos',
@@ -2402,6 +2449,8 @@ function exportIntakesCSV() {
       i.phone1 || '',
       i.intakeDate || '',
       i.weeks || '',
+      i.trainingPriority || '',
+      (i.trainingGoals||[]).join('; '),
       i.allergies || '',
       i.temperament || '',
       i.aggrDogs || '',
