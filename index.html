@@ -596,6 +596,9 @@
   .ic-box { font-size: 10px; }
   .ic-note { font-size: 11px; }
   .ic-grid { grid-template-columns: repeat(auto-fill,minmax(100px,1fr)); }
+  .cal-name { font-size: 9px; }
+  .cd-name { font-size: 13px; }
+  .cd-sub { font-size: 11px; }
   @media(min-width:700px){
     .ic-name { font-size: 16px; }
     .ic-meta { font-size: 13px; }
@@ -603,6 +606,9 @@
     .ic-box { font-size: 12px; }
     .ic-note { font-size: 13px; }
     .ic-grid { grid-template-columns: repeat(auto-fill,minmax(135px,1fr)); }
+    .cal-name { font-size: 11px; }
+    .cd-name { font-size: 15px; }
+    .cd-sub { font-size: 12px; }
   }
   .field label {
     display: block; font-size: 10px; font-weight: 700;
@@ -2178,8 +2184,8 @@ function renderCalendar(){
     let namesHtml = isClosed ? '<div style="font-size:9px;color:var(--border);margin-top:4px;">Cerrado</div>' : '';
     if(hasEvents){
       const allNames = [...ev.in, ...ev.active, ...ev.out];
-      namesHtml = allNames.slice(0,2).map(n=>`<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${esc(n)}</div>`).join('');
-      if(allNames.length>2) namesHtml += `<div style="font-size:9px;color:var(--muted);">+${allNames.length-2} más</div>`;
+      namesHtml = allNames.slice(0,2).map(n=>`<div class="cal-name" style="color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${esc(n)}</div>`).join('');
+      if(allNames.length>2) namesHtml += `<div class="cal-name" style="color:var(--muted);">+${allNames.length-2} más</div>`;
     }
 
     grid.innerHTML += `<div onclick="showCalDay('${ds}')" style="min-height:80px;background:${bg};border:${border};border-radius:8px;padding:6px;cursor:${cursor};transition:border-color .15s;" onmouseover="if(${hasEvents})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${isToday?'var(--green)':'var(--border)'}'">
@@ -2213,17 +2219,17 @@ function showCalDay(ds){
     : '';
   if(ins.length){
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">🟢 Ingresan</div>';
-    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}${s.dropoffTime?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.dropoffTime)+'</span>':''}</div>`).join('');
+    html2 += ins.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-weight:600;" class="cd-name">${esc(s.name)}${s.breed?`<span style="color:var(--muted);font-weight:400;margin-left:8px;" class="cd-sub">${esc(s.breed)}</span>`:''}${s.dropoffTime?'<span style="color:var(--muted);font-weight:400;margin-left:8px;" class="cd-sub">⏰ '+fmtTime(s.dropoffTime)+'</span>':''}</div>`).join('');
   }
   if(active.length){
     if(ins.length) html2 += '<div style="height:12px;"></div>';
     html2 += `<div style="font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;">🐾 Activos (${active.length})</div>`;
-    html2 += active.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}</div>`).join('');
+    html2 += active.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-weight:600;" class="cd-name">${esc(s.name)}${s.breed?`<span style="color:var(--muted);font-weight:400;margin-left:8px;" class="cd-sub">${esc(s.breed)}</span>`:''}</div>`).join('');
   }
   if(outs.length){
     if(ins.length||active.length) html2 += '<div style="height:12px;"></div>';
     html2 += '<div style="font-size:11px;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:8px;">🟡 Salen</div>';
-    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;font-weight:600;">${esc(s.name)}${s.breed?`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">${esc(s.breed)}</span>`:''}${s.time?'<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px;">⏰ '+fmtTime(s.time)+'</span>':''}</div>`).join('');
+    html2 += outs.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-weight:600;" class="cd-name">${esc(s.name)}${s.breed?`<span style="color:var(--muted);font-weight:400;margin-left:8px;" class="cd-sub">${esc(s.breed)}</span>`:''}${s.time?'<span style="color:var(--muted);font-weight:400;margin-left:8px;" class="cd-sub">⏰ '+fmtTime(s.time)+'</span>':''}</div>`).join('');
   }
 
   document.getElementById('calDetailContent').innerHTML = html2;
