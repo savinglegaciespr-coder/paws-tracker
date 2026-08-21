@@ -590,6 +590,20 @@
   @media(min-width:1000px){
     .add-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
   }
+  .ic-name { font-size: 14px; }
+  .ic-meta { font-size: 11px; }
+  .ic-received { font-size: 10px; }
+  .ic-box { font-size: 10px; }
+  .ic-note { font-size: 11px; }
+  .ic-grid { grid-template-columns: repeat(auto-fill,minmax(100px,1fr)); }
+  @media(min-width:700px){
+    .ic-name { font-size: 16px; }
+    .ic-meta { font-size: 13px; }
+    .ic-received { font-size: 11px; }
+    .ic-box { font-size: 12px; }
+    .ic-note { font-size: 13px; }
+    .ic-grid { grid-template-columns: repeat(auto-fill,minmax(135px,1fr)); }
+  }
   .field label {
     display: block; font-size: 10px; font-weight: 700;
     letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
@@ -2330,61 +2344,61 @@ function _renderIntakes(list, intakesToRender) {
     return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${statusColor[intake.status]||'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;word-wrap:break-word;overflow-wrap:break-word;">
         <div style="margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
-            <div style="font-size:14px;font-weight:800;color:var(--text);">${esc(intake.dogName)}</div>
+            <div class="ic-name" style="font-weight:800;color:var(--text);">${esc(intake.dogName)}</div>
             <span style="font-size:10px;font-weight:700;color:${statusColor[intake.status]||'var(--muted)'};text-transform:uppercase;background:var(--surface2);padding:2px 8px;border-radius:20px;">${esc(statusLabel[intake.status]||intake.status)}</span>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${calcAge(intake.dob)?'🐾 '+esc(calcAge(intake.dob))+' · ':''}${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
-          <div style="font-size:11px;color:var(--muted);">${esc(intake.phone1||'')} · ${esc(intake.email||'')}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Recibido: ${intake.createdAt?.toDate ? intake.createdAt.toDate().toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + ' · ' + intake.createdAt.toDate().toLocaleTimeString('es-PR',{hour:'numeric',minute:'2-digit',hour12:true}) : '—'}</div>
+          <div class="ic-meta" style="color:var(--muted);margin-top:2px;">${calcAge(intake.dob)?'🐾 '+esc(calcAge(intake.dob))+' · ':''}${esc(intake.breed||'')} · ${esc(intake.ownerName)}</div>
+          <div class="ic-meta" style="color:var(--muted);">${esc(intake.phone1||'')} · ${esc(intake.email||'')}</div>
+          <div class="ic-received" style="color:var(--muted);margin-top:3px;">Recibido: ${intake.createdAt?.toDate ? intake.createdAt.toDate().toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + ' · ' + intake.createdAt.toDate().toLocaleTimeString('es-PR',{hour:'numeric',minute:'2-digit',hour12:true}) : '—'}</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:4px;margin-bottom:8px;">
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+        <div class="ic-grid" style="display:grid;gap:4px;margin-bottom:8px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ingreso deseado</div>
             <div style="font-weight:700;">${fmtDate(intake.intakeDate)}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Salida estimada</div>
             <div style="font-weight:700;">${fmtDate(calcExitFromIntake(intake.intakeDate, intake.weeks))}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Hora entrega</div>
             <div style="font-weight:700;">${intake.dropoffTime?fmtTime(intake.dropoffTime):'—'}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Hora recogida</div>
             <div style="font-weight:700;">${intake.pickupTime?fmtTime(intake.pickupTime):'—'}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Semanas</div>
             <div style="font-weight:700;">${esc(intake.weeks||'—')}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Temperamento</div>
             <div style="font-weight:700;">${esc(intake.temperament||'—')}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo perros</div>
             <div style="font-weight:700;color:${intake.aggrDogs==='No'?'var(--green)':'var(--red)'};">${esc(intake.aggrDogs||'—')}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Agresivo personas</div>
             <div style="font-weight:700;color:${intake.aggrPeople==='No'?'var(--green)':'var(--red)'};">${esc(intake.aggrPeople||'—')}</div>
           </div>
-          <div style="background:var(--surface2);border-radius:6px;padding:6px 8px;font-size:10px;">
+          <div class="ic-box" style="background:var(--surface2);border-radius:6px;padding:6px 8px;">
             <div style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Ha mordido</div>
             <div style="font-weight:700;color:${intake.bitten==='No'?'var(--green)':'var(--red)'};">${esc(intake.bitten||'—')}</div>
           </div>
         </div>
-        ${(intake.trainingGoals&&intake.trainingGoals.length) ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;border-left:3px solid var(--green);">
+        ${(intake.trainingGoals&&intake.trainingGoals.length) ? `<div class="ic-note" style="color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;border-left:3px solid var(--green);">
           <b style="color:var(--green2);">🎯 Objetivo prioritario:</b> ${esc(intake.trainingPriority||'—')}<br/>
           <b>Objetivos:</b> ${esc(intake.trainingGoals.join(', '))}
         </div>`:''}
-        ${intake.allergies||intake.medications||intake.food ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;">
+        ${intake.allergies||intake.medications||intake.food ? `<div class="ic-note" style="color:var(--muted);margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:8px 10px;">
           ${intake.allergies?'<b>Alergias:</b> '+esc(intake.allergies)+'<br/>':''}
           ${intake.medications?'<b>Medicamentos:</b> '+esc(intake.medications)+'<br/>':''}
           ${intake.food?'<b>Alimento:</b> '+esc(intake.food)+' — '+esc(intake.feedingSchedule):''}
         </div>`:''}
-        ${intake.vetName ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+        ${intake.vetName ? `<div class="ic-note" style="color:var(--muted);margin-bottom:10px;">
           <b>Vet:</b> ${esc(intake.vetName)} · ${esc(intake.vetPhone)} · ${esc(intake.vetClinic)}<br/>
           <b>Emergencia:</b> ${esc(intake.emergencyName)} · ${esc(intake.emergencyPhone)}
         </div>`:''}
