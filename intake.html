@@ -45,6 +45,9 @@
   select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
   .error-msg{font-size:11px;color:var(--red);display:none;margin-top:2px;}
   .field.has-error .error-msg{display:block;}
+  .hint{font-size:11px;color:var(--muted);margin-top:2px;}
+  .full-day-warning{font-size:11.5px;color:var(--yellow);margin-top:6px;line-height:1.5;display:none;}
+  select option:disabled{color:#777;}
   .field.has-error input,.field.has-error select,.field.has-error textarea{border-color:var(--red);}
   .radio-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
   .radio-opt{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;user-select:none;}
@@ -166,41 +169,26 @@
           <label>Hora de entrega<span class="req">*</span></label>
           <select id="dropoffTime" onchange="chooseTime('dropoff', this)">
             <option value="">-- Seleccionar --</option>
-            <option value="10:00">10:00 am</option>
-            <option value="10:30">10:30 am</option>
-            <option value="11:00">11:00 am</option>
-            <option value="11:30">11:30 am</option>
-            <option value="12:00">12:00 pm</option>
-            <option value="12:30">12:30 pm</option>
-            <option value="13:00">1:00 pm</option>
             <option value="13:30">1:30 pm</option>
             <option value="14:00">2:00 pm</option>
             <option value="14:30">2:30 pm</option>
             <option value="15:00">3:00 pm</option>
-            <option value="15:30">3:30 pm</option>
-            <option value="16:00">4:00 pm</option>
           </select>
+          <span class="hint">Las entregas son en la tarde (1:30pm-3:00pm).</span>
           <span class="error-msg">Selecciona una hora</span>
         </div>
         <div class="field" id="f-pickupTime">
           <label>Hora de recogida<span class="req">*</span></label>
           <select id="pickupTime" onchange="chooseTime('pickup', this)">
             <option value="">-- Seleccionar --</option>
+            <option value="09:30">9:30 am</option>
             <option value="10:00">10:00 am</option>
             <option value="10:30">10:30 am</option>
             <option value="11:00">11:00 am</option>
-            <option value="11:30">11:30 am</option>
-            <option value="12:00">12:00 pm</option>
-            <option value="12:30">12:30 pm</option>
-            <option value="13:00">1:00 pm</option>
-            <option value="13:30">1:30 pm</option>
-            <option value="14:00">2:00 pm</option>
-            <option value="14:30">2:30 pm</option>
-            <option value="15:00">3:00 pm</option>
-            <option value="15:30">3:30 pm</option>
-            <option value="16:00">4:00 pm</option>
           </select>
+          <span class="hint">Las recogidas son en la mañana (9:30am-11:00am).</span>
           <span class="error-msg">Selecciona una hora</span>
+          <span class="full-day-warning" id="pickupFullWarning" style="display:none;"></span>
         </div>
         <div class="field full"><label>Notas adicionales</label><textarea id="extraNotes" placeholder="Cualquier información adicional..."></textarea></div>
       </div>
@@ -667,6 +655,24 @@
     try { await deleteDoc(doc(db, 'holds', holdId(date, time))); }
     catch (e) { console.warn('No se pudo liberar hold (se dejará expirar):', e.code || e.message); }
   };
+
+  // Revisa cuáles de estas horas, en esta fecha, ya están tomadas por OTRA sesión —
+  // para avisar al cliente de antemano en vez de que falle recién al elegir. Si el
+  // chequeo mismo falla (red, permisos), no bloquea nada: se asume libre.
+  window.getTakenByOthers = async (date, times) => {
+    const now = Date.now();
+    const takenByOthers = {};
+    for (const t of times) {
+      try {
+        const snap = await getDoc(doc(db, 'holds', holdId(date, t)));
+        const d = snap.exists() ? snap.data() : null;
+        takenByOthers[t] = !!(d && d.expiresAt > now && d.holder !== _holdSessionId);
+      } catch (e) {
+        takenByOthers[t] = false;
+      }
+    }
+    return takenByOthers;
+  };
 </script>
 
 <script>
@@ -701,6 +707,47 @@
     const exitDs = calcExitFromIntake(intakeDs, weeks);
     if (!exitDs) return { error: 'No se pudo calcular la fecha de salida.' };
     return { date: exitDs };
+  }
+
+  // Máximo 4 recogidas/día: solo hay 4 franjas posibles, así que si las 4 ya las tiene
+  // otro cliente en la fecha de salida de este, aquí no queda ninguna hora disponible.
+  // Se avisa de una vez (deshabilitando las franjas tomadas) en vez de que el cliente
+  // las pruebe una por una y falle cuatro veces seguidas.
+  const PICKUP_TIMES = ['09:30', '10:00', '10:30', '11:00'];
+
+  async function refreshPickupAvailability() {
+    const selectEl = document.getElementById('pickupTime');
+    const warnEl = document.getElementById('pickupFullWarning');
+    if (!selectEl || !warnEl) return;
+
+    const dateResult = _holdDateFor('pickup');
+    if (dateResult.error) {
+      [...selectEl.options].forEach(o => { if (o.value) o.disabled = false; });
+      warnEl.style.display = 'none';
+      return;
+    }
+
+    let taken;
+    try {
+      taken = await window.getTakenByOthers(dateResult.date, PICKUP_TIMES);
+    } catch (e) {
+      return; // si el chequeo falla, no bloquear la selección — attemptHold sigue siendo la protección real
+    }
+
+    let allTaken = true;
+    [...selectEl.options].forEach(o => {
+      if (!o.value) return;
+      o.disabled = !!taken[o.value];
+      if (!taken[o.value]) allTaken = false;
+    });
+
+    if (allTaken) {
+      const fmtD = new Date(dateResult.date + 'T12:00:00').toLocaleDateString('es-PR', { weekday: 'long', day: 'numeric', month: 'long' });
+      warnEl.textContent = `⚠️ El día de salida (${fmtD}) ya tiene las 4 horas de recogida ocupadas por otras familias. Contáctanos al 787-245-7292 para coordinar, o prueba cambiando la fecha de ingreso o las semanas de estadía.`;
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.style.display = 'none';
+    }
   }
 
   async function chooseTime(type, selectEl) {
@@ -769,6 +816,7 @@
         showTimeError(fieldId, result === 'taken' ? 'Esa hora ya fue tomada para la nueva fecha, elige otra.' : 'No se pudo reservar la hora, intenta de nuevo.');
       }
     }
+    await refreshPickupAvailability();
     } finally {
       _timeHoldPending--;
     }
@@ -1008,7 +1056,7 @@
   function prevStep(step){ if(step>1) showStep(step-1); }
 
   // ── CALENDARIO DE DISPONIBILIDAD ──────────────────────────────
-  const CAL_MAX = 22;
+  const CAL_MAX = 26;
   let _calSlots = null;
   let _calYear = null;
   let _calMonth = null;
@@ -1176,7 +1224,7 @@
         // Si la fecha seleccionada ya no está disponible, limpiarla
         if (_calSelectedDate) {
           const occ = _occupancyMap(_calSlots)[_calSelectedDate] || 0;
-          if (occ >= 22) {
+          if (occ >= 26) {
             _calSelectedDate = '';
             document.getElementById('intakeDate').value = '';
             if (currentStep !== 1) showDateInvalidBanner();
