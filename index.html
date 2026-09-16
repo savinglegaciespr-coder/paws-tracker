@@ -436,6 +436,20 @@
     const intakeSnap = await getDoc(doc(db, 'intakes', intakeId));
     const intakeData = intakeSnap.exists() ? intakeSnap.data() : null;
     await updateDoc(doc(db, 'intakes', intakeId), { status: 'rechazado' });
+    // Libera las reservas de hora (entrega/recogida) de esta solicitud — quedaban
+    // bloqueadas desde que se envió, precisamente para que nadie más las tomara
+    // mientras estaba pendiente de revisión. Al rechazarla, el cupo debe quedar libre.
+    if (intakeData) {
+      try {
+        if (intakeData.intakeDate && intakeData.dropoffTime) {
+          await deleteDoc(doc(db, 'holds', `${intakeData.intakeDate}_${intakeData.dropoffTime}`));
+        }
+        if (intakeData.intakeDate && intakeData.weeks && intakeData.pickupTime) {
+          const exitDs = calcExitFromIntake(intakeData.intakeDate, intakeData.weeks);
+          if (exitDs) await deleteDoc(doc(db, 'holds', `${exitDs}_${intakeData.pickupTime}`));
+        }
+      } catch (e) { console.warn('No se pudo liberar hold al rechazar (expirará solo):', e.code || e.message); }
+    }
     if (intakeData && intakeData.email) {
       const biz = await getBiz();
       try {
@@ -2531,11 +2545,17 @@ async function confirmApprove(id) {
       if (!confirm('⚠️ FECHA LLENA\n\n"' + fmtD(ds) + '" ya tiene ' + count + ' perros activos (capacidad máxima: 22).\n\n¿Quieres aprobar de todas formas?')) return;
     }
 
-    // Guard de hora duplicada: la reserva temporal del cliente (holds) expira a los 15 min,
-    // así que para solicitudes aprobadas horas/días después hay que volver a chequear aquí.
-    const sameDay = students.filter(s => s.status !== 'completado' && s.intake === ds);
-    const dropoffClash = intake.dropoffTime && sameDay.find(s => s.dropoffTime === intake.dropoffTime);
-    const pickupClash  = intake.pickupTime  && sameDay.find(s => s.time === intake.pickupTime);
+    // Guard de hora duplicada contra estudiantes ya aprobados (la reserva temporal del
+    // cliente en `holds` ya debería haber bloqueado esto entre solicitudes, pero se
+    // vuelve a chequear aquí como respaldo). La entrega de esta solicitud cae en `ds`
+    // (fecha de ingreso); su recogida cae en la fecha de SALIDA calculada, no en `ds` —
+    // hay que comparar cada una contra el día real, y contra cualquier tipo de horario
+    // (una entrega y una recogida a la misma hora también cuentan como choque).
+    const exitDs = calcExitFromIntake(intake.intakeDate, intake.weeks);
+    const onIntakeDay = students.filter(s => s.status !== 'completado' && s.intake === ds);
+    const onExitDay    = exitDs ? students.filter(s => s.status !== 'completado' && s.date === exitDs) : [];
+    const dropoffClash = intake.dropoffTime && onIntakeDay.find(s => s.dropoffTime === intake.dropoffTime || s.time === intake.dropoffTime);
+    const pickupClash  = intake.pickupTime  && onExitDay.find(s => s.time === intake.pickupTime || s.dropoffTime === intake.pickupTime);
     if (dropoffClash || pickupClash) {
       let msg = '⚠️ HORA DUPLICADA\n\n';
       if (dropoffClash) msg += '"' + dropoffClash.name + '" ya tiene la misma hora de entrega (' + fmtTime(intake.dropoffTime) + ').\n';
