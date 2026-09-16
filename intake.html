@@ -149,7 +149,7 @@
       <div class="field-grid">
         <div class="field" id="f-weeks">
           <label>Semanas de estadía estimadas<span class="req">*</span></label>
-          <select id="weeks" onchange="if(_calSlots) renderIntakeCal();">
+          <select id="weeks" onchange="if(_calSlots) renderIntakeCal(); revalidateAllHolds();">
             <option value="">-- Seleccionar --</option>
             <option value="1">1 semana</option>
             <option value="2">2 semanas</option>
@@ -609,20 +609,28 @@
     if (_unsubAvailability) { _unsubAvailability(); _unsubAvailability = null; }
   };
 
-  // Reservas temporales de hora (entrega/recogida) para que dos clientes no puedan
-  // tomar la misma fecha+hora mientras ambos llenan el formulario al mismo tiempo.
-  const HOLD_TTL_MS = 15 * 60 * 1000; // 15 minutos — tiempo estimado para llenar el formulario
-  const holdId = (date, type, time) => `${date}_${type}_${time}`;
+  // Reservas de hora (entrega/recogida) para que dos clientes no puedan tomar la
+  // misma fecha+hora — ni entre sí mientras llenan el formulario a la vez, ni uno
+  // después del otro mientras la solicitud del primero sigue pendiente de revisión.
+  //
+  // La llave NO incluye el tipo (entrega/recogida): una entrega y una recogida que
+  // caigan en la misma fecha+hora también deben chocar entre sí, no solo del mismo tipo.
+  const HOLD_TTL_MS = 15 * 60 * 1000; // 15 min — mientras se elige la hora y se sigue llenando el formulario
+  window.HOLD_CONFIRM_MS = 3 * 24 * 60 * 60 * 1000; // 3 días — una vez enviada la solicitud, hasta que se apruebe/rechace
+  const holdId = (date, time) => `${date}_${time}`;
+  // Identifica esta pestaña/sesión como dueña de sus propias reservas, para poder
+  // confirmarlas/extenderlas más tarde sin que la transacción las confunda con "ya tomadas".
+  const _holdSessionId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '_' + Math.random().toString(36).slice(2));
 
   // Devuelve 'ok' | 'taken' | 'error'
   window.attemptHold = async (date, type, time) => {
-    const ref = doc(db, 'holds', holdId(date, type, time));
+    const ref = doc(db, 'holds', holdId(date, time));
     try {
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
         const now = Date.now();
-        if (snap.exists() && snap.data().expiresAt > now) throw { code: 'already-held' };
-        tx.set(ref, { date, type, time, expiresAt: now + HOLD_TTL_MS });
+        if (snap.exists() && snap.data().expiresAt > now && snap.data().holder !== _holdSessionId) throw { code: 'already-held' };
+        tx.set(ref, { date, type, time, expiresAt: now + HOLD_TTL_MS, holder: _holdSessionId });
       });
       return 'ok';
     } catch (e) {
@@ -632,9 +640,31 @@
     }
   };
 
+  // Confirma que la reserva sigue siendo nuestra (no expiró ni la tomó otra sesión) y
+  // le extiende el vencimiento. Se usa justo antes de guardar la solicitud, y de nuevo
+  // al aprobar/rechazar para que la reserva sobreviva mientras el negocio la revisa.
+  // Devuelve 'ok' | 'lost' | 'error'
+  window.confirmAndExtendHold = async (date, type, time, newExpiresAt) => {
+    const ref = doc(db, 'holds', holdId(date, time));
+    try {
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const now = Date.now();
+        const data = snap.exists() ? snap.data() : null;
+        if (!data || data.holder !== _holdSessionId || data.expiresAt <= now) throw { code: 'lost' };
+        tx.update(ref, { expiresAt: newExpiresAt });
+      });
+      return 'ok';
+    } catch (e) {
+      if (e && e.code === 'lost') return 'lost';
+      console.error('Hold confirm error:', e);
+      return 'error';
+    }
+  };
+
   window.releaseHold = async (date, type, time) => {
-    if (!date || !type || !time) return;
-    try { await deleteDoc(doc(db, 'holds', holdId(date, type, time))); }
+    if (!date || !time) return;
+    try { await deleteDoc(doc(db, 'holds', holdId(date, time))); }
     catch (e) { console.warn('No se pudo liberar hold (se dejará expirar):', e.code || e.message); }
   };
 </script>
@@ -659,17 +689,32 @@
     markError(fieldId, false);
   }
 
+  // La entrega ocurre el día de ingreso; la recogida ocurre el día de SALIDA
+  // (calculado de ingreso + semanas) — cada una debe reservarse contra su propia fecha real,
+  // si no, dos clientes con distinta fecha de ingreso pero la misma fecha de salida nunca chocan.
+  function _holdDateFor(type) {
+    const intakeDs = document.getElementById('intakeDate').value;
+    if (!intakeDs) return { error: 'Selecciona primero la fecha de ingreso.' };
+    if (type === 'dropoff') return { date: intakeDs };
+    const weeks = document.getElementById('weeks').value;
+    if (!weeks) return { error: 'Selecciona primero las semanas de estadía.' };
+    const exitDs = calcExitFromIntake(intakeDs, weeks);
+    if (!exitDs) return { error: 'No se pudo calcular la fecha de salida.' };
+    return { date: exitDs };
+  }
+
   async function chooseTime(type, selectEl) {
     const fieldId = type === 'dropoff' ? 'dropoffTime' : 'pickupTime';
     const time = selectEl.value;
     if (!time) { _myHolds[type] = null; clearTimeError(fieldId); return; }
 
-    const date = document.getElementById('intakeDate').value;
-    if (!date) {
+    const dateResult = _holdDateFor(type);
+    if (dateResult.error) {
       selectEl.value = '';
-      showTimeError(fieldId, 'Selecciona primero la fecha de ingreso.');
+      showTimeError(fieldId, dateResult.error);
       return;
     }
+    const date = dateResult.date;
 
     selectEl.disabled = true;
     _timeHoldPending++;
@@ -689,9 +734,10 @@
     clearTimeError(fieldId);
   }
 
-  // Si el cliente cambia la fecha después de haber elegido horas, hay que trasladar
+  // Si el cliente cambia la fecha de ingreso o las semanas de estadía después de haber
+  // elegido horas, la fecha de entrega y/o de salida real cambia — hay que trasladar
   // (o invalidar) las reservas ya hechas contra la fecha anterior.
-  async function revalidateHoldsForDate(newDate) {
+  async function revalidateAllHolds() {
     _timeHoldPending++;
     try {
     for (const type of ['dropoff', 'pickup']) {
@@ -699,7 +745,17 @@
       const selectEl = document.getElementById(fieldId);
       const time = selectEl.value;
       if (!time) continue;
+
+      const dateResult = _holdDateFor(type);
       const prev = _myHolds[type];
+      if (dateResult.error) {
+        if (prev) window.releaseHold(prev.date, type, prev.time);
+        _myHolds[type] = null;
+        selectEl.value = '';
+        showTimeError(fieldId, dateResult.error);
+        continue;
+      }
+      const newDate = dateResult.date;
       if (prev && prev.date === newDate) continue; // misma fecha, hold sigue vigente
 
       const result = await window.attemptHold(newDate, type, time);
@@ -1092,7 +1148,7 @@
     markError('intakeDate', false);
     hideDateInvalidBanner();
     renderIntakeCal();
-    revalidateHoldsForDate(ds);
+    revalidateAllHolds();
   }
 
   function icalPrev() {
@@ -1138,11 +1194,48 @@
   // que el script del módulo Firebase corrió, por eso se engancha a DOMContentLoaded).
   document.addEventListener('DOMContentLoaded', loadCalendar);
 
+  // Justo antes de guardar, confirma que las horas elegidas siguen siendo nuestras
+  // (la reserva de 15 min pudo expirar si el formulario tardó más de eso) y las
+  // extiende varios días — hasta que la solicitud se apruebe o rechace.
+  async function confirmMyHolds() {
+    for (const type of ['dropoff', 'pickup']) {
+      const fieldId = type === 'dropoff' ? 'dropoffTime' : 'pickupTime';
+      const selectEl = document.getElementById(fieldId);
+      const time = selectEl.value;
+      if (!time) continue; // validateStep(1) ya exige que esto no pase
+
+      let h = _myHolds[type];
+      if (!h || h.time !== time) {
+        // No había una reserva válida en memoria para el valor actual — intentar tomarla ahora.
+        const dateResult = _holdDateFor(type);
+        if (dateResult.error) { showStep(1); showTimeError(fieldId, dateResult.error); return false; }
+        const result = await window.attemptHold(dateResult.date, type, time);
+        if (result !== 'ok') {
+          showStep(1); selectEl.value = ''; _myHolds[type] = null;
+          showTimeError(fieldId, result === 'taken' ? 'Esa hora ya fue tomada, elige otra.' : 'No se pudo reservar la hora, intenta de nuevo.');
+          return false;
+        }
+        h = { date: dateResult.date, time };
+        _myHolds[type] = h;
+      }
+
+      const result = await window.confirmAndExtendHold(h.date, type, h.time, Date.now() + window.HOLD_CONFIRM_MS);
+      if (result !== 'ok') {
+        showStep(1); selectEl.value = ''; _myHolds[type] = null;
+        showTimeError(fieldId, 'Esa hora ya no está disponible, elige otra.');
+        return false;
+      }
+    }
+    return true;
+  }
+
   async function submitForm() {
     if(!validateStep(1)) { showStep(1); showDateInvalidBanner(); return; }
     if(!validateStep(8)) return;
     const btn=document.getElementById('submitBtn');
-    btn.textContent='Subiendo documentos...'; btn.disabled=true;
+    btn.textContent='Confirmando horario...'; btn.disabled=true;
+    if(!(await confirmMyHolds())) { btn.textContent='Enviar Solicitud'; btn.disabled=false; return; }
+    btn.textContent='Subiendo documentos...';
     try {
       await uploadFiles();
       btn.textContent='Guardando solicitud...';
@@ -1189,7 +1282,9 @@
         parasiteFileURL: fileURLs.parasite || '',
       };
       await window.saveIntake(data);
-      releaseMyHolds();
+      // La reserva de hora NO se libera aquí a propósito: debe seguir bloqueada mientras
+      // la solicitud está pendiente de revisión, para que nadie más tome la misma hora.
+      // Se libera en index.html cuando el negocio rechaza la solicitud (o expira sola, 3 días).
       if (window.unsubAvailability) window.unsubAvailability();
       document.getElementById('intakeForm').style.display='none';
       document.getElementById('stepIndicator').style.display='none';
@@ -1249,7 +1344,7 @@
             parasiteFileURL: fileURLs.parasite || '',
           };
           await window.saveIntake(data);
-          releaseMyHolds();
+          // Ver nota arriba: la reserva se queda activa hasta que se rechace la solicitud.
           document.getElementById('intakeForm').style.display='none';
           document.getElementById('stepIndicator').style.display='none';
           document.getElementById('progressBar').style.display='none';
